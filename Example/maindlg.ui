@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainDlg</class>
+ <widget class="QDialog" name="MainDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>459</width>
+    <height>362</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>QtSimulator</string>
+  </property>
+  <widget class="QPushButton" name="displayPanel">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>20</y>
+     <width>431</width>
+     <height>321</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>320</width>
+     <height>240</height>
+    </size>
+   </property>
+   <property name="flat">
+    <bool>true</bool>
+   </property>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+ <slots>
+  <slot>onSettingsButton()</slot>
+  <slot>onHomeButton()</slot>
+  <slot>onTempUpButton()</slot>
+  <slot>onTempDownButton()</slot>
+  <slot>onClicked()</slot>
+  <slot>onProxy()</slot>
+  <slot>onLightChanged(int)</slot>
+ </slots>
+</ui>
