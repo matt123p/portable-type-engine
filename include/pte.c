@@ -364,7 +364,6 @@ void pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy)
 		const pte_glyph* g = findChar(text[i], bf);
 		if (g)
 		{
-			// Bitblt this character across
 			const pte_kern* k;
 			k = findKern(last_char, text[i], bf);
 			if (k)
