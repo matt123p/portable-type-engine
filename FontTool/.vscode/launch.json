@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Font Sampler",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\fontsampler.py",
+            "console": "integratedTerminal",
+            "args": [
+                "./Roboto-VariableFont_wdth,wght.ttf",
+                "output_font.c",
+            ]
+        }
+    ]
+}
