@@ -9,9 +9,9 @@ extern "C"
 	pte_base_font* get_Roboto128();
 }
 
-// Define our own qRgb macro (format: 0x00RRGGBB)
-#ifndef qRgb
-#define qRgb(r, g, b) (((r) & 0xff) | (((g) & 0xff) << 8) | (((b) & 0xff) << 16))
+// Define our own RGB macro (format: 0x00RRGGBB)
+#ifndef RGB
+#define RGB(r, g, b) (((r) & 0xff) | (((g) & 0xff) << 8) | (((b) & 0xff) << 16))
 #endif
 
 // Global raw image buffer and dimensions
@@ -37,7 +37,7 @@ extern "C" void hw_blendPixel(int x, int y, int a, int col)
 
 	int b = 256 - a;
 	unsigned char newp[3];
-	// Blend each channel (note the swapped order for red and blue to match our qRgb macro)
+	// Blend each channel
 	newp[0] = ((p[0] * b) >> 8) + ((c[2] * a) >> 8); // Red
 	newp[1] = ((p[1] * b) >> 8) + ((c[1] * a) >> 8); // Green
 	newp[2] = ((p[2] * b) >> 8) + ((c[0] * a) >> 8); // Blue
@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 	{
 		pte_font f = pte_getFont(get_Roboto128(), 40);
 		y = f.m_baseline;
-		pte_drawText(&f, 5, y, "Example text", -1, qRgb(75, 255, 0));
+		pte_drawText(&f, 5, y, "Example text", -1, RGB(75, 255, 0));
 		y += f.m_line_height;
 	}
 
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 		for (int s = 8; s < 32; s += 2)
 		{
 			f = pte_getFont(get_Roboto128(), s);
-			x = pte_drawText(&f, x, y, c, 1, qRgb(0, 0, 0));
+			x = pte_drawText(&f, x, y, c, 1, RGB(0, 0, 0));
 			++c[0];
 		}
 		y += f.m_line_height;
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	// Draw several lines of red text
 	{
 		pte_font f = pte_getFont(get_Roboto128(), 24);
-		unsigned int colour = qRgb(255, 0, 0);
+		unsigned int colour = RGB(255, 0, 0);
 		pte_drawText(&f, 5, y, "I WANDERED lonely as a cloud", -1, colour);
 		y += f.m_line_height;
 		pte_drawText(&f, 5, y, "That floats on high o'er vales and hills,", -1, colour);
