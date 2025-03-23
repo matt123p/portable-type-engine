@@ -343,6 +343,10 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, i
 				sub_offset_y = ((y + g->xoffset) * f->m_ra) % f->m_rb;
 				offset_x = ((x + g->yoffset) * f->m_ra) / f->m_rb;
 				sub_offset_x = ((x + g->yoffset) * f->m_ra) % f->m_rb;
+				if (!sub_offset_x)
+				{
+					--offset_x;
+				}
 				break;
 			case 180:
 				offset_x = ((x - g->xoffset) * f->m_ra) / f->m_rb;
@@ -362,10 +366,6 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, i
 				if (sub_offset_y)
 				{
 					--offset_y;
-				}
-				if (sub_offset_x)
-				{
-					--offset_x;
 				}
 				break;
 			default:

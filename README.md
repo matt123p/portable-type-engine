@@ -1,6 +1,6 @@
-# Portable Type Engine v1.00
+# Portable Type Engine v2.00
 
-Release v1.00 22th April 2015
+Release v2.00 23 March 2025
 
 Please visit the main project's home page here: 
     [GitHub](https://github.com/matt123p/portable-type-engine)
@@ -10,8 +10,7 @@ Please the LICENSE file for details of licensing.
 
 ## Overview
 
-This project is an elegant font rendering engine written in pure C that is design to work well in 
-simple embedded systems, such as those that use an ESP32 or a small ARM processor.
+This project is an elegant font rendering engine written in pure C that is design to work well in simple embedded systems, such as those that use an ESP32 or a small ARM processor.
 
 ## Features
 
@@ -39,7 +38,7 @@ Example usage
 ``` C
 pte_font f = pte_getFont(get_Roboto128(), 40);
 y = f.m_baseline;
-pte_drawText(&f, 5, y, "Example text", -1, 0);
+pte_drawText(&f, 5, y, 0, "Example text", -1, 0);
 y += f.m_line_height;
 ```
 
@@ -127,7 +126,7 @@ The function returns void. The computed width and height are stored in to dx and
 
 
 
-### int	pte_drawText( pte_font *font, int x, int y, const char *text, int size, int c )
+### int	pte_drawText( pte_font *font, int x, int y, int r, const char *text, int size, int c )
 
 This function draws a text string onto the display at a specified location using the provided font and color. The text is rendered with anti-aliasing by repeatedly calling the user-defined hw_blendPixel() function.
 
@@ -141,6 +140,9 @@ This function draws a text string onto the display at a specified location using
 
 - `y`
   The y position (in pixels) corresponding to the font's baseline.
+
+- `r`
+  The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
 
 - `text`
   The text string to render.
@@ -175,6 +177,9 @@ Returns an integer representing the x coordinate immediately following the drawn
 - `x1`, `y1`, `x2`, `y2`
   The coordinates defining the rectangle within which the text will be placed.
 
+- `r`
+  The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
+
 - `text`
 The text string to render.
 
@@ -187,3 +192,24 @@ The number of characters in the string to consider. Pass -1 if the text is null-
 **Return Value:**
 
 Returns an integer representing the x coordinate immediately following the drawn text.
+
+## void hw_blendPixel(int x, int y, int a, int col)
+
+This function is _not_ provided, and must be provided by you when you use this library.  It is called repeatedly by the drawing functions to plot pixels on to the display.
+
+**Parameters:**
+- `x`
+  The x position (in pixels) where to plot the pixel
+
+- `y`
+  The y position (in pixels) where to plot the pixel
+
+- `a`
+  The opacity of the pixel, where `255` is a opaque and `0` is completely transparent.  This can be considered the amount of grayscale the pixel should have.
+
+- `c`
+  The color to draw the pixel. This value is hardware dependent and just passed directly from the text drawing functions.
+
+**Return Value:**
+
+This function is not expected to return any value.
