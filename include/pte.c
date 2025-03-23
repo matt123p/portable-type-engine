@@ -491,7 +491,7 @@ void pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy)
 }
 
 // Centre the text in a rectangle
-int pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
+void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
 {
 	int dx, dy;
 	int x = 0, y = 0;
@@ -541,6 +541,67 @@ int pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y
 	y += f->m_baseline;
 
 	return pte_drawText(f, x, y, r, text, size, c);
+}
+
+void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
+{
+	int rect_width = x2 - x1;
+	int line_height = f->m_line_height;
+	const char* word_start = text;
+	const char* line_start = text;
+	const char* word_end = text;
+	int dx, dy;
+
+	while (*word_start && y1 < (y2 - line_height))
+	{
+		word_end = word_start;
+		while (*word_end && *word_end != ' ' && *word_end != '\n')
+		{
+			word_end++;
+		}
+		int prev_length = word_start - line_start;
+		int line_length = word_end - line_start;
+
+		pte_measureText(f, line_start, line_length, &dx, &dy);
+		if (dx > rect_width)
+		{
+			if (line_start == word_start)
+			{
+				// Single word is too long to fit in the line, force break
+				word_start = word_end;
+			}
+			else
+			{
+				// Draw the current line and start a new one
+				pte_drawTextRect(o, f, x1, y1, x2, y2, r, line_start, prev_length, c);
+				y1 += line_height;
+				line_start = word_start;
+				continue;
+			}
+		}
+		else
+		{
+			word_start = word_end;
+			if (*word_start == ' ')
+			{
+				word_start++;
+			}
+		}
+
+		if (*word_start == '\n')
+		{
+			pte_drawTextRect(o, f, x1, y1, x2, y2, r, line_start, line_length, c);
+			y1 += line_height;
+			word_start++;
+			line_start = word_start;
+		}
+	}
+
+	if (y1 < (y2 - line_height) && line_start < word_start)
+	{
+		int line_length = word_end - line_start;
+		pte_drawTextRect(o, f, x1, y1, x2, y2, r, line_start, line_length, c);
+	}
 }
 
 // Get a font

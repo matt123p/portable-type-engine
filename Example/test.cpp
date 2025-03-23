@@ -109,8 +109,14 @@ int main(int argc, char* argv[])
 		pte_font f = pte_getFont(get_Roboto128(), 16);
 		pte_drawText(&f, 540, 170, 0, "Rotated text", -1, RGB(0, 0, 0));
 		pte_drawText(&f, 520, 170, 90, "Rotated text", -1, RGB(0, 0, 0));
-		pte_drawText(&f, 510, 170, 180, "Rotated text", -1, RGB(0, 0, 0));
+		pte_drawText(&f, 510, 158, 180, "Rotated text", -1, RGB(0, 0, 0));
 		pte_drawText(&f, 530, 150, 270, "Rotated text", -1, RGB(0, 0, 0));
+	}
+
+	// Draw text in a bounding rectangle
+	{
+		pte_font f = pte_getFont(get_Roboto128(), 16);
+		pte_drawTextRectWrapped(TEXT_CENTER | TEXT_TOP, &f, 20, 300, 200, 400, 0, "Many people like to think that they know what to write in a situation like this.", -1, RGB(0, 0, 0));
 	}
 
 	// Save the final image to a BMP file

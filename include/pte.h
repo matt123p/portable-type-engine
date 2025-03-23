@@ -120,7 +120,18 @@ int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, int siz
 //      size            - the number of characters in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-int		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
+void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
+
+// Draw text using a rectangle for positioning.  The text is wrapped to fit within the rectangle.
+//      o               - the placement within the rectangle to draw the text, see pte_Placement
+//      font            - the font to use, create using the pte_getFont() function
+//      x1, y1, x2, y2  - the rectangle
+//		r				- the rotation (0, 90, 180 and 270)
+//      text            - the text to render
+//      size            - the number of characters in "text" or -1 to read until the nul character
+//      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
+//
+void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
 
 // Determine the bounding rectangle for a string in pixels
 // Parameters:
