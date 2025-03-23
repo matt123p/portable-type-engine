@@ -25,6 +25,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <stdlib.h>
+#include <string.h>
 #include "pte.h"
 
 // Find a character in a font
@@ -515,7 +516,7 @@ void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int 
 
 	switch (o & 0xf)
 	{
-	case TEXT_VCENTRE:
+	case TEXT_VCENTER:
 		x = ((x2 - x1) - dx) / 2 + x1;
 		break;
 	case TEXT_LEFT:
@@ -528,7 +529,7 @@ void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int 
 
 	switch (o & 0xf0)
 	{
-	case TEXT_HCENTRE:
+	case TEXT_HCENTER:
 		y = ((y2 - y1) - f->m_baseline) / 2 + y1;
 		break;
 	case TEXT_TOP:
@@ -540,7 +541,7 @@ void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int 
 	}
 	y += f->m_baseline;
 
-	return pte_drawText(f, x, y, r, text, size, c);
+	pte_drawText(f, x, y, r, text, size, c);
 }
 
 void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)

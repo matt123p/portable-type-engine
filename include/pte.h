@@ -29,15 +29,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _PORTABLE_TYPE_ENGINE_H_
 
 typedef int pte_Placement;
-#define		TEXT_VCENTRE		0x0
 #define		TEXT_VCENTER		0x0
 #define		TEXT_LEFT			0x1
 #define		TEXT_RIGHT			0x2
-#define		TEXT_HCENTRE		0x0
 #define		TEXT_HCENTER		0x0
 #define		TEXT_TOP			0x10
 #define		TEXT_BOTTOM			0x20
-#define		TEXT_CENTRE			0
 #define		TEXT_CENTER			0
 
 typedef struct

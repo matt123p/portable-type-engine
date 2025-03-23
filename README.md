@@ -158,17 +158,19 @@ This function draws a text string onto the display at a specified location using
 Returns an integer representing the x coordinate immediately following the drawn text.
 
 
-### int		pte_drawTextRect( pte_Placement o, pte_font *f, int x1, int y1, int x2, int y2, const char *text, int size, int c )
+### void pte_drawTextRect( pte_Placement o, pte_font *f, int x1, int y1, int x2, int y2, const char *text, int size, int c )
+
+Draw text using the rectangle to position it. This function _does not_ wrap or clip the text to fit the rectangle, it is simply using the rectangle for positioning.
 
 **Parameters:**
 - `o`
-  The placement within the rectangle to draw the text. See pte_Placement for details.
+  The placement within the rectangle to draw the text. See pte_Placement for details.  
 
   The vertical and horizontal alignment are independent.
 
-  - For vertical alignment it can be: `TEXT_VCENTRE`, `TEXT_LEFT` or `TEXT_RIGHT`
-  - For horizontal aligment it can be: `TEXT_HCENTRE`, `TEXT_TOP`, `TEXT_BOTTOM` 
-  - `TEXT_CENTRE` is a shortcut for `TEXT_VCENTRE | TEXT_HCENTRE`
+  - For vertical alignment it can be: `TEXT_VCENTER`, `TEXT_LEFT` or `TEXT_RIGHT`
+  - For horizontal aligment it can be: `TEXT_HCENTER`, `TEXT_TOP`, `TEXT_BOTTOM` 
+  - `TEXT_CENTER` is a shortcut for `TEXT_VCENTER | TEXT_HCENTER`
 
 
 - `f`
@@ -191,7 +193,40 @@ The number of characters in the string to consider. Pass -1 if the text is null-
 
 **Return Value:**
 
-Returns an integer representing the x coordinate immediately following the drawn text.
+This function does not return any value.
+
+### void pte_drawTextRectWrapped( pte_Placement o, pte_font *f, int x1, int y1, int x2, int y2, const char *text, int size, int c )
+
+Draw text using the rectangle to constrain it. This function _does_ wrap the text to fit the rectangle, it is simply using the rectangle for positioning.  If the text doesn't fit, then it is simply not drawn.
+
+**Parameters:**
+- `o`
+  The placement within the rectangle to draw the text. See pte_Placement for details.  
+  
+  This function only accepts a vertical alignment parameter.  It can be: `TEXT_VCENTER`, `TEXT_LEFT` or `TEXT_RIGHT`
+  
+
+- `f`
+  The font to use for rendering. This should be created using the pte_getFont() function.
+
+- `x1`, `y1`, `x2`, `y2`
+  The coordinates defining the rectangle within which the text will be placed.
+
+- `r`
+  The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
+
+- `text`
+The text string to render.
+
+- `size`
+The number of characters in the string to consider. Pass -1 if the text is null-terminated.
+
+- `c`
+  The color to draw the text. This value is passed directly to the hw_blendPixel() function.
+
+**Return Value:**
+
+This function does not return any value.
 
 ## void hw_blendPixel(int x, int y, int a, int col)
 
