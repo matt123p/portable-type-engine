@@ -30,67 +30,68 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef int pte_Placement;
 #define		TEXT_VCENTRE		0x0
+#define		TEXT_VCENTER		0x0
 #define		TEXT_LEFT			0x1
 #define		TEXT_RIGHT			0x2
 #define		TEXT_HCENTRE		0x0
+#define		TEXT_HCENTER		0x0
 #define		TEXT_TOP			0x10
 #define		TEXT_BOTTOM			0x20
 #define		TEXT_CENTRE			0
-
+#define		TEXT_CENTER			0
 
 typedef struct
 {
-    int code;
-    int width;
-    int height;
-    int xoffset;
-    int yoffset;
-    int xadvance;
-    int ptr;
+	int code;
+	int width;
+	int height;
+	int xoffset;
+	int yoffset;
+	int xadvance;
+	int ptr;
 } pte_glyph;
 
 typedef struct
 {
-    int first;
-    int second;
+	int first;
+	int second;
 
-    int amount;
+	int amount;
 } pte_kern;
 
 typedef struct
 {
-    // The size of the font
-    int						m_size;
+	// The size of the font
+	int						m_size;
 
-    // The actual font data
-    const unsigned char*	m_data;
+	// The actual font data
+	const unsigned char* m_data;
 
-    // The glyph data
-    int                 m_number_glyphs;
-    const pte_glyph*	m_gylphs;
+	// The glyph data
+	int                 m_number_glyphs;
+	const pte_glyph* m_gylphs;
 
-    // The kerning data
-    int                 m_number_kerns;
-    const pte_kern*		m_kerns;
+	// The kerning data
+	int                 m_number_kerns;
+	const pte_kern* m_kerns;
 
-    // Placement
-    int                 m_line_height;
-    int                 m_baseline;
-
+	// Placement
+	int                 m_line_height;
+	int                 m_baseline;
 } pte_base_font;
 
 typedef struct _pte_font
 {
-    // The base font
-    const pte_base_font*	m_font;
+	// The base font
+	const pte_base_font* m_font;
 
-    // Resizing data
-    int				m_ra;
-    int				m_rb;
+	// Resizing data
+	int				m_ra;
+	int				m_rb;
 
-    // Placement (of resized font)
-    int				m_line_height;
-    int				m_baseline;
+	// Placement (of resized font)
+	int				m_line_height;
+	int				m_baseline;
 } pte_font;
 
 //
@@ -102,24 +103,24 @@ typedef struct _pte_font
 //      font        - the font to use, create using the pte_getFont() function
 //      x           - x position to start drawing the text
 //      y           - y position of the font's baseline
+//		r			- the rotation (0, 90, 180 and 270)
 //      text        - the text to render
 //      size        - the number of characters in "text" or -1 to read until the nul character
 //      c           - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-int		pte_drawText( pte_font *font, int x, int y, const char *text, int size, int c );
-
+int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, int size, int c);
 
 // Draw text using a rectangle for positioning.  Note: the text is *not* clipped to the rectangle
 // Parameters:
 //      o               - the placement within the rectangle to draw the text, see pte_Placement
 //      font            - the font to use, create using the pte_getFont() function
 //      x1, y1, x2, y2  - the rectangle
+//		r				- the rotation (0, 90, 180 and 270)
 //      text            - the text to render
 //      size            - the number of characters in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-int		pte_drawTextRect( pte_Placement o, pte_font *f, int x1, int y1, int x2, int y2, const char *text, int size, int c );
-
+int		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
 
 // Determine the bounding rectangle for a string in pixels
 // Parameters:
@@ -129,14 +130,12 @@ int		pte_drawTextRect( pte_Placement o, pte_font *f, int x1, int y1, int x2, int
 //      dx          - the width of the string in pixels
 //      dy          - the height of the string in pixels
 //
-void	pte_measureText( pte_font *f, const char *text, int size, int *dx, int *dy );
-
-
+void	pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy);
 
 // Get a font
-pte_font pte_getFont( const pte_base_font* f, int size );
+pte_font pte_getFont(const pte_base_font* f, int size);
 
 // Interface to the hardware
-void	hw_blendPixel( int x, int y, int a, int col );
+void	hw_blendPixel(int x, int y, int a, int col);
 
 #endif  // _PORTABLE_TYPE_ENGINE_H_

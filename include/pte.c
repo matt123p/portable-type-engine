@@ -179,7 +179,9 @@ struct decomp_line
 };
 
 // Bitblt a horizontal line from a compressed source
-static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixels_to_go, int src_width, int dst_x, int dst_y, int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
+static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixels_to_go, int src_width,
+	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
+	int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
 {
 	unsigned char line_acc[128];
 
@@ -242,7 +244,8 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 					hw_blendPixel(dst_x, dst_y, (line_acc[p] << 8) / div, plot_col);
 				}
 
-				++dst_x;
+				dst_x += pixel_xinc;
+				dst_y += pixel_yinc;
 			}
 
 			// Reset the counters
@@ -266,13 +269,42 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 }
 
 // Draw text on the canvas
-int pte_drawText(pte_font* f, int x, int y, const char* text, int size, int c)
+int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, int c)
 {
 	int last_char = -1;
 	int i;
 	const pte_base_font* bf = f->m_font;
 
+	int pixel_xinc = 1;
+	int pixel_yinc = 0;
+	int line_xinc = 0;
+	int line_yinc = 1;
+	switch (r)
+	{
+	case 90:
+		pixel_xinc = 0;
+		pixel_yinc = 1;
+		line_xinc = -1;
+		line_yinc = 0;
+		break;
+	case 180:
+		pixel_xinc = -1;
+		pixel_yinc = 0;
+		line_xinc = 0;
+		line_yinc = -1;
+		break;
+	case 270:
+		pixel_xinc = 0;
+		pixel_yinc = -1;
+		line_xinc = 1;
+		line_yinc = 0;
+		break;
+	default:
+		break;
+	}
+
 	x = (x * f->m_rb) / f->m_ra;
+	y = (y * f->m_rb) / f->m_ra;
 	for (i = 0; text[i] != 0 && (size == -1 || i < size); ++i)
 	{
 		const pte_glyph* g = findChar(text[i], bf);
@@ -284,28 +316,83 @@ int pte_drawText(pte_font* f, int x, int y, const char* text, int size, int c)
 			int acc = 0;
 			int col = 1;
 			int pixels_to_go = 0;
-			int offset_y = -(g->yoffset * f->m_ra) / f->m_rb;
-			int sub_offset_y = (g->yoffset * f->m_ra) % f->m_rb;
 			int cy = 0;
 			int last_cy = 0;
 			int finished = 0;
 			const unsigned char* ptr = bf->m_data + g->ptr;
-			int sub_offset_x;
 			int offset_x;
+			int sub_offset_x;
+			int offset_y;
+			int sub_offset_y;
+			int xoffset = g->xoffset;
+			int yoffset = g->yoffset;
+			int sub_offset_dx;
+			int sub_offset_dy;
 
 			k = findKern(last_char, text[i], bf);
 			if (k)
 			{
-				x += k->amount;
+				x += k->amount * pixel_xinc;
+				y += k->amount * pixel_yinc;
 			}
 
-			offset_x = ((x + g->xoffset) * f->m_ra) / f->m_rb;
-			sub_offset_x = ((x + g->xoffset) * f->m_ra) % f->m_rb;
-
-			if (sub_offset_y)
+			switch (r)
 			{
-				--offset_y;
+			case 90:
+				offset_y = ((y + g->xoffset) * f->m_ra) / f->m_rb;
+				sub_offset_y = ((y + g->xoffset) * f->m_ra) % f->m_rb;
+				offset_x = ((x + g->yoffset) * f->m_ra) / f->m_rb;
+				sub_offset_x = ((x + g->yoffset) * f->m_ra) % f->m_rb;
+				break;
+			case 180:
+				offset_x = ((x - g->xoffset) * f->m_ra) / f->m_rb;
+				sub_offset_x = f->m_rb - ((x - g->xoffset) * f->m_ra) % f->m_rb - 1;
+				offset_y = ((y + g->yoffset) * f->m_ra) / f->m_rb;
+				sub_offset_y = ((y + g->yoffset) * f->m_ra) % f->m_rb;
+				if (sub_offset_x)
+				{
+					--offset_x;
+				}
+				break;
+			case 270:
+				offset_x = ((x - g->yoffset) * f->m_ra) / f->m_rb;
+				sub_offset_x = f->m_rb - ((x - g->yoffset) * f->m_ra) % f->m_rb - 1;
+				offset_y = ((y - g->xoffset) * f->m_ra) / f->m_rb;
+				sub_offset_y = f->m_rb - ((y - g->xoffset) * f->m_ra) % f->m_rb - 1;
+				if (sub_offset_y)
+				{
+					--offset_y;
+				}
+				if (sub_offset_x)
+				{
+					--offset_x;
+				}
+				break;
+			default:
+				offset_x = ((x + g->xoffset) * f->m_ra) / f->m_rb;
+				sub_offset_x = ((x + g->xoffset) * f->m_ra) % f->m_rb;
+				offset_y = ((y - g->yoffset) * f->m_ra) / f->m_rb;
+				sub_offset_y = f->m_rb - ((y - g->yoffset) * f->m_ra) % f->m_rb - 1;
+				if (sub_offset_y)
+				{
+					--offset_y;
+				}
+				break;
 			}
+
+			switch (r)
+			{
+			case 270:
+			case 90:
+				sub_offset_dx = sub_offset_y;
+				sub_offset_dy = sub_offset_x;
+				break;
+			default:
+				sub_offset_dx = sub_offset_x;
+				sub_offset_dy = sub_offset_y;
+				break;
+			}
+
 			acc = f->m_rb;
 			while (!finished)
 			{
@@ -316,12 +403,12 @@ int pte_drawText(pte_font* f, int x, int y, const char* text, int size, int c)
 					int lines = cy - last_cy;
 					int overspill = 0;
 
-					if (sub_offset_y > 0)
+					if (sub_offset_dy > 0)
 					{
-						overspill = cy - (sub_offset_y * cy) / f->m_rb;
+						overspill = cy - (sub_offset_dy * cy) / f->m_rb;
 						lines -= overspill;
 						cy -= overspill;
-						sub_offset_y = 0;
+						sub_offset_dy = 0;
 					}
 					else if (cy >= g->height)
 					{
@@ -332,9 +419,11 @@ int pte_drawText(pte_font* f, int x, int y, const char* text, int size, int c)
 
 					if (lines > 0)
 					{
-						blt_horz_cmprs_resize(&ptr, &col, &pixels_to_go, g->width, offset_x, y + offset_y, f->m_ra, f->m_rb, sub_offset_x, lines, overspill, c);
+						blt_horz_cmprs_resize(&ptr, &col, &pixels_to_go, g->width, offset_x, offset_y, pixel_xinc, pixel_yinc,
+							f->m_ra, f->m_rb, sub_offset_dx, lines, overspill, c);
 					}
-					++offset_y;
+					offset_x += line_xinc;
+					offset_y += line_yinc;
 
 					last_cy = cy;
 					acc += f->m_rb;
@@ -343,7 +432,21 @@ int pte_drawText(pte_font* f, int x, int y, const char* text, int size, int c)
 				++cy;
 			}
 
-			x += g->xadvance;
+			switch (r)
+			{
+			case 90:
+				y += g->xadvance;
+				break;
+			case 180:
+				x -= g->xadvance;
+				break;
+			case 270:
+				y -= g->xadvance;
+				break;
+			default:
+				x += g->xadvance;
+				break;
+			}
 
 			last_char = text[i];
 		}
@@ -384,11 +487,27 @@ void pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy)
 }
 
 // Centre the text in a rectangle
-int pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, const char* text, int size, int c)
+int pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
 {
 	int dx, dy;
 	int x = 0, y = 0;
 	pte_measureText(f, text, size, &dx, &dy);
+
+	switch (r)
+	{
+	case 270:
+	case 90:
+		// Swap x1, y1 and x2, y2
+	{
+		int t = x1;
+		x1 = y1;
+		y1 = t;
+		t = x2;
+		x2 = y2;
+		y2 = t;
+	}
+	break;
+	}
 
 	switch (o & 0xf)
 	{
@@ -417,7 +536,7 @@ int pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y
 	}
 	y += f->m_baseline;
 
-	return pte_drawText(f, x, y, text, size, c);
+	return pte_drawText(f, x, y, r, text, size, c);
 }
 
 // Get a font

@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 	{
 		pte_font f = pte_getFont(get_Roboto128(), 40);
 		y = f.m_baseline;
-		pte_drawText(&f, 5, y, "Example text", -1, RGB(75, 255, 0));
+		pte_drawText(&f, 5, y, 0, "Example text", -1, RGB(75, 255, 0));
 		y += f.m_line_height;
 	}
 
@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
 		for (int s = 8; s < 32; s += 2)
 		{
 			f = pte_getFont(get_Roboto128(), s);
-			x = pte_drawText(&f, x, y, c, 1, RGB(0, 0, 0));
+			x = pte_drawText(&f, x, y, 0, c, 1, RGB(0, 0, 0));
 			++c[0];
 		}
 		y += f.m_line_height;
@@ -91,17 +91,26 @@ int main(int argc, char* argv[])
 	{
 		pte_font f = pte_getFont(get_Roboto128(), 24);
 		unsigned int colour = RGB(255, 0, 0);
-		pte_drawText(&f, 5, y, "I WANDERED lonely as a cloud", -1, colour);
+		pte_drawText(&f, 5, y, 0, "I WANDERED lonely as a cloud", -1, colour);
 		y += f.m_line_height;
-		pte_drawText(&f, 5, y, "That floats on high o'er vales and hills,", -1, colour);
+		pte_drawText(&f, 5, y, 0, "That floats on high o'er vales and hills,", -1, colour);
 		y += f.m_line_height;
-		pte_drawText(&f, 5, y, "When all at once I saw a crowd,", -1, colour);
+		pte_drawText(&f, 5, y, 0, "When all at once I saw a crowd,", -1, colour);
 		y += f.m_line_height;
-		pte_drawText(&f, 5, y, "A host, of golden daffodils;", -1, colour);
+		pte_drawText(&f, 5, y, 0, "A host, of golden daffodils;", -1, colour);
 		y += f.m_line_height;
-		pte_drawText(&f, 5, y, "Beside the lake, beneath the trees,", -1, colour);
+		pte_drawText(&f, 5, y, 0, "Beside the lake, beneath the trees,", -1, colour);
 		y += f.m_line_height;
-		pte_drawText(&f, 5, y, "Fluttering and dancing in the breeze.", -1, colour);
+		pte_drawText(&f, 5, y, 0, "Fluttering and dancing in the breeze.", -1, colour);
+	}
+
+	// Draw a rotated text
+	{
+		pte_font f = pte_getFont(get_Roboto128(), 16);
+		pte_drawText(&f, 480, 300, 0, "Rotated text", -1, RGB(0, 0, 0));
+		pte_drawText(&f, 460, 300, 90, "Rotated text", -1, RGB(0, 0, 0));
+		pte_drawText(&f, 440, 300, 180, "Rotated text", -1, RGB(0, 0, 0));
+		pte_drawText(&f, 460, 280, 270, "Rotated text", -1, RGB(0, 0, 0));
 	}
 
 	// Save the final image to a BMP file
