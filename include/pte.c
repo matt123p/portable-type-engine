@@ -357,6 +357,10 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, i
 				{
 					--offset_x;
 				}
+				if (sub_offset_y)
+				{
+					++offset_y;
+				}
 				break;
 			case 270:
 				offset_x = ((x - g->yoffset) * f->m_ra) / f->m_rb;
