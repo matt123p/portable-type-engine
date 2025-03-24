@@ -197,7 +197,7 @@ This function does not return any value.
 
 ### void pte_drawTextRectWrapped( pte_Placement o, pte_font *f, int x1, int y1, int x2, int y2, const char *text, int size, int c )
 
-Draw text using the rectangle to constrain it. This function _does_ wrap the text to fit the rectangle, it is simply using the rectangle for positioning.  If the text doesn't fit, then it is simply not drawn.
+Draw text using the rectangle to constrain it. This function _does_ wrap the text to fit the rectangle.  If the text doesn't fit, then it is simply not drawn.
 
 **Parameters:**
 - `o`

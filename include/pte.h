@@ -105,7 +105,7 @@ typedef struct _pte_font
 //      size        - the number of characters in "text" or -1 to read until the nul character
 //      c           - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, int size, int c);
+int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, size_t size, int c);
 
 // Draw text using a rectangle for positioning.  Note: the text is *not* clipped to the rectangle
 // Parameters:
@@ -117,7 +117,7 @@ int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, int siz
 //      size            - the number of characters in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
+void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c);
 
 // Draw text using a rectangle for positioning.  The text is wrapped to fit within the rectangle.
 //      o               - the placement within the rectangle to draw the text, see pte_Placement
@@ -128,7 +128,7 @@ void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int
 //      size            - the number of characters in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
-void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c);
+void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c);
 
 // Determine the bounding rectangle for a string in pixels
 // Parameters:
@@ -138,7 +138,7 @@ void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x
 //      dx          - the width of the string in pixels
 //      dy          - the height of the string in pixels
 //
-void	pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy);
+void	pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* dy);
 
 // Get a font
 pte_font pte_getFont(const pte_base_font* f, int size);

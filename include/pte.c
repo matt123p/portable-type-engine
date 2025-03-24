@@ -171,14 +171,6 @@ static const pte_kern* findKern(int c1, int c2, const pte_base_font* f)
 	return NULL;
 }
 
-struct decomp_line
-{
-	const unsigned char* raw_p;
-	int pixels_to_go;
-	int col;
-	int acc;
-};
-
 // Bitblt a horizontal line from a compressed source
 static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixels_to_go, int src_width,
 	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
@@ -232,8 +224,8 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 		// Move on the divider
 		c -= ra;
 
-		// Do we output a pixel, either because of the counter
-		// or because this is the last pixel (y == 0)?
+		// Do we output a pixel, either because of the divider (c)
+		// or because this is the last row of pixels (count == 0)?
 		if (c <= 0 || count == 0)
 		{
 			// Are we on the the last line we are looking at?
@@ -249,28 +241,29 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 				dst_y += pixel_yinc;
 			}
 
-			// Reset the counters
-			div = 0;
-			c += rb;
-			++p;
-
 			if (x >= src_width)
 			{
 				// Move to the next line
 				--count;
 
-				// Reset the counters (unless this is the last pixel)
+				// Reset for the next line
 				p = 0;
-				div = 0;
 				x = x_start;
 				c = rb;
 			}
+			else
+			{
+				// Count up for the next pixel
+				c += rb;
+				++p;
+			}
+			div = 0;
 		}
 	}
 }
 
 // Draw text on the canvas
-int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, int c)
+int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size, int c)
 {
 	int last_char = -1;
 	int i;
@@ -461,7 +454,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, int size, i
 }
 
 // How big will the text be?
-void pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy)
+void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* dy)
 {
 	int last_char = -1;
 	int i;
@@ -492,7 +485,7 @@ void pte_measureText(pte_font* f, const char* text, int size, int* dx, int* dy)
 }
 
 // Centre the text in a rectangle
-void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
+void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c)
 {
 	int dx, dy;
 	int x = 0, y = 0;
@@ -544,7 +537,7 @@ void pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int 
 	pte_drawText(f, x, y, r, text, size, c);
 }
 
-void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, int size, int c)
+void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c)
 {
 	int rect_width = x2 - x1;
 	int line_height = f->m_line_height;
@@ -560,8 +553,8 @@ void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x
 		{
 			word_end++;
 		}
-		int prev_length = word_start - line_start;
-		int line_length = word_end - line_start;
+		size_t prev_length = word_start - line_start;
+		size_t line_length = word_end - line_start;
 
 		pte_measureText(f, line_start, line_length, &dx, &dy);
 		if (dx > rect_width)
@@ -600,7 +593,7 @@ void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x
 
 	if (y1 < (y2 - line_height) && line_start < word_start)
 	{
-		int line_length = word_end - line_start;
+		size_t line_length = word_end - line_start;
 		pte_drawTextRect(o, f, x1, y1, x2, y2, r, line_start, line_length, c);
 	}
 }

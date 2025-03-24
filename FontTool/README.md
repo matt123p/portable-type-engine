@@ -48,7 +48,9 @@ python fontsampler.py <font-file-path> [output file-name] [--charset <charset op
 
 **Basic Usage:**
 
+```sh
 python fontsampler.py C:\path\to\yourfont.ttf
+```
 
 This command loads the specified font file and creates output_font.c in the same directory.
 
