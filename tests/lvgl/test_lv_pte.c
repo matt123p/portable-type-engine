@@ -4,10 +4,10 @@
 
 #include <lv_pte.h>
 
-static const unsigned char data[] = {0x00, 0x11, 0x00, 0x11};
+static const unsigned char data[] = {0x02, 0x02};
 static const pte_glyph glyphs[] = {
     {'A', 2, 1, 0, 0, 3, 0},
-    {'V', 2, 1, 0, 0, 3, 2},
+    {'V', 2, 1, 0, 0, 3, 1},
 };
 static const pte_kern kerns[] = {{'A', 'V', -1}};
 static const pte_base_font source = {

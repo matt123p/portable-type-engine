@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageChops
 from fontTools.ttLib import TTFont
 import sys
 import argparse
+import shlex
 
 class Glyph:
     def __init__(self, c, code, width, height, xoffset, yoffset, ptr, xadvance):
@@ -30,7 +31,7 @@ class FontSampler:
         self.m_kerns = []
         self.m_uncompressed_size = 0
 
-    def convertFont(self, font, tt_font, filename):
+    def convertFont(self, font, tt_font, filename, generation_command=None):
         characters = {}
 
         for start, end in self.m_unicodeRanges:
@@ -53,6 +54,9 @@ class FontSampler:
             fout.write("// FONT: " + font.getname()[0] + "\n")
             fout.write("// Font Pixel Height Sampled: " + str(font.size) + "\n")
             fout.write("// Character codes: Unicode code points\n\n")
+            if generation_command:
+                fout.write("// Recreate with:\n")
+                fout.write("// " + generation_command + "\n\n")
             # Calculate total data size: image data + glyph data + kern data
             total_bytes = len(self.m_data) + (28 * len(self.m_glyphs)) + (12 * len(self.m_kerns))
             fout.write("// Font data size: " + str(len(self.m_data) + (28 * len(self.m_glyphs))) + " bytes\n")
@@ -109,16 +113,33 @@ class FontSampler:
             fout.write("pte_base_font *get_" + fontName + "()\n")
             fout.write("{\n    return &f;\n}\n")
 
-    def output_pixel(self, run_of_on, pixels_so_far, pixel):
-        if run_of_on:
-            pixel |= (pixels_so_far << 4)
-        else:
-            pixel |= pixels_so_far
-            self.m_data.append(pixel)
-            pixel = 0
-        pixels_so_far = 0
-        run_of_on = not run_of_on
-        return run_of_on, pixels_so_far, pixel
+    @staticmethod
+    def encode_pixels(pixels):
+        tokens = []
+        run_of_on = False
+        run_length = 0
+
+        def output_run(length):
+            while length >= 15:
+                tokens.append(15)
+                length -= 15
+            # A zero token is required after an exact multiple of 15 to switch colour.
+            tokens.append(length)
+
+        for on in pixels:
+            if on == run_of_on:
+                run_length += 1
+            else:
+                output_run(run_length)
+                run_of_on = on
+                run_length = 1
+
+        if pixels:
+            output_run(run_length)
+
+        return [((tokens[i] << 4)
+                 | (tokens[i + 1] if i + 1 < len(tokens) else 0))
+                for i in range(0, len(tokens), 2)]
 
     def val(self, c):
         return ord(c)
@@ -155,27 +176,17 @@ class FontSampler:
 
         self.m_uncompressed_size = ((width + 7) // 8) * height
 
-        pixel = 0
-        run_of_on = False
-        pixels_so_far = 0
+        pixels = []
 
         # Process pixels in the bounding box.
         for y in range(top, bottom):
             for x in range(left, right):
-                last_pixel = (x == right - 1 and y == bottom - 1)
                 # Check if pixel is more than 50% black
                 # Note: We are using RGB mode so black is (0, 0, 0)
                 t = image.getpixel((x, y))
-                on = t[0] < 128
-                if run_of_on != on:
-                    run_of_on, pixels_so_far, pixel = self.output_pixel(run_of_on, pixels_so_far, pixel)
-                pixels_so_far += 1
-                if pixels_so_far == 15:
-                    run_of_on, pixels_so_far, pixel = self.output_pixel(run_of_on, pixels_so_far, pixel)
-                if last_pixel and pixels_so_far != 0:
-                    run_of_on, pixels_so_far, pixel = self.output_pixel(run_of_on, pixels_so_far, pixel)
-                if last_pixel and run_of_on:
-                    run_of_on, pixels_so_far, pixel = self.output_pixel(run_of_on, pixels_so_far, pixel)
+                pixels.append(t[0] < 128)
+
+        self.m_data.extend(self.encode_pixels(pixels))
 
     def calcAllKerns(self, tt_font):
         # Map glyph names to the Unicode code points emitted in the glyph table.
@@ -326,7 +337,8 @@ def create_argument_parser():
 
 
 def main(argv=None):
-    args = create_argument_parser().parse_args(argv)
+    command_args = list(sys.argv[1:] if argv is None else argv)
+    args = create_argument_parser().parse_args(command_args)
 
     font_file = args.font_file
     output_file = args.output_file
@@ -346,7 +358,8 @@ def main(argv=None):
         return 1
 
     sampler = FontSampler(unicode_ranges=unicode_ranges, symbols=args.symbols)
-    sampler.convertFont(sample_font, tt_font, output_file)
+    command = shlex.join(["python", sys.argv[0], *command_args])
+    sampler.convertFont(sample_font, tt_font, output_file, command)
     return 0
 
 

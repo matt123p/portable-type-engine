@@ -171,7 +171,8 @@ static const pte_kern* findKern(int c1, int c2, const pte_base_font* f)
 }
 
 // Bitblt a horizontal line from a compressed source
-static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixels_to_go, int src_width,
+static void blt_horz_cmprs_resize(const unsigned char** ptr, int* high_nibble, int* col,
+	int* pixels_to_go, int* switch_col, int src_width,
 	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
 	int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
 {
@@ -197,19 +198,24 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 			// Decode the compressed font data
 			while (*pixels_to_go == 0)
 			{
-				if (!*col)
+				int run;
+				if (*switch_col)
 				{
-					++ (*ptr);
+					*col = !*col;
+					*switch_col = 0;
 				}
-				*col = !*col;
-				if (*col)
+				if (*high_nibble)
 				{
-					*pixels_to_go = (**ptr) >> 4;
+					run = (**ptr) >> 4;
 				}
 				else
 				{
-					*pixels_to_go = (**ptr) & 0xf;
+					run = (**ptr) & 0xf;
+					++(*ptr);
 				}
+				*high_nibble = !*high_nibble;
+				*pixels_to_go = run;
+				*switch_col = run < 15;
 			}
 
 			if (*col)
@@ -373,8 +379,10 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			const pte_kern* k;
 
 			int acc = 0;
-			int col = 1;
+			int high_nibble = 1;
+			int col = 0;
 			int pixels_to_go = 0;
+			int switch_col = 0;
 			int cy = 0;
 			int last_cy = 0;
 			int finished = 0;
@@ -482,7 +490,8 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 
 					if (lines > 0)
 					{
-						blt_horz_cmprs_resize(&ptr, &col, &pixels_to_go, g->width, offset_x, offset_y, pixel_xinc, pixel_yinc,
+						blt_horz_cmprs_resize(&ptr, &high_nibble, &col, &pixels_to_go, &switch_col,
+							g->width, offset_x, offset_y, pixel_xinc, pixel_yinc,
 							f->m_ra, f->m_rb, sub_offset_dx, lines, overspill, c);
 					}
 					offset_x += line_xinc;

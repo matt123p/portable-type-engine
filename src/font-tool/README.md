@@ -13,6 +13,11 @@ legacy `kern` tables and GPOS pair positioning (including class-based kerning)
 are supported. The runtime allocates its scanline accumulator to fit each glyph,
 so source glyph widths are not limited to 128 pixels.
 
+Bitmap runs are stored as sequential four-bit tokens. Values from 0 through 14
+end a run and switch between background and foreground; 15 continues the same
+colour for another 15 pixels. Each glyph starts on a byte boundary with a
+background run.
+
 ## Installation
 
 ### Prerequisites
