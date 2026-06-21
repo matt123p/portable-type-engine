@@ -21,6 +21,7 @@ It has the following features:
 3. High quality font output - Characters are rendered to sub-pixel placement and with full anti-aliasing
 4. A simple python tool is included to convert any TrueType or OpenType font to a C for inclusion in your project
 5. Compact font definitions, each font is compressed using run-length encoding.
+6. Unicode glyph tables with UTF-8 text input.
 
 
 ## Use
@@ -109,10 +110,10 @@ This function calculates the bounding rectangle for a given string, obtaining it
   The font instance to use for measurement. This should be created using the pte_getFont() function.
 
 - `text`
-  The text string to measure.
+  The UTF-8 text string to measure.
 
 - `size`
-  The number of characters to consider in the string. Pass -1 if the string is null-terminated.
+  The number of bytes to consider in the string. Pass -1 if the string is null-terminated.
 
 - `dx`
   A pointer to an integer that will receive the width of the string in pixels.
@@ -145,10 +146,10 @@ This function draws a text string onto the display at a specified location using
   The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
 
 - `text`
-  The text string to render.
+  The UTF-8 text string to render.
 
 - `size`
-  The number of characters in the string to consider. Pass -1 if the text is null-terminated.
+  The number of bytes in the string to consider. Pass -1 if the text is null-terminated.
 
 - `c`
   The color to draw the text. This value is passed directly to the hw_blendPixel() function.
@@ -183,10 +184,10 @@ Draw text using the rectangle to position it. This function _does not_ wrap or c
   The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
 
 - `text`
-The text string to render.
+The UTF-8 text string to render.
 
 - `size`
-The number of characters in the string to consider. Pass -1 if the text is null-terminated.
+The number of bytes in the string to consider. Pass -1 if the text is null-terminated.
 
 - `c`
   The color to draw the text. This value is passed directly to the hw_blendPixel() function.
@@ -216,10 +217,10 @@ Draw text using the rectangle to constrain it. This function _does_ wrap the tex
   The rotation of the text.  This can be `0`, `90`, `180` or `270` - where `0` is left to right, horizontal text.  All other values will be treated as `0`.
 
 - `text`
-The text string to render.
+The UTF-8 text string to render.
 
 - `size`
-The number of characters in the string to consider. Pass -1 if the text is null-terminated.
+The number of bytes in the string to consider. Pass -1 if the text is null-terminated.
 
 - `c`
   The color to draw the text. This value is passed directly to the hw_blendPixel() function.

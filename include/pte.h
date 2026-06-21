@@ -101,8 +101,8 @@ typedef struct _pte_font
 //      x           - x position to start drawing the text
 //      y           - y position of the font's baseline
 //		r			- the rotation (0, 90, 180 and 270)
-//      text        - the text to render
-//      size        - the number of characters in "text" or -1 to read until the nul character
+//      text        - the UTF-8 text to render
+//      size        - the number of bytes in "text" or -1 to read until the nul character
 //      c           - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
 int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, size_t size, int c);
@@ -113,8 +113,8 @@ int		pte_drawText(pte_font* font, int x, int y, int r, const char* text, size_t 
 //      font            - the font to use, create using the pte_getFont() function
 //      x1, y1, x2, y2  - the rectangle
 //		r				- the rotation (0, 90, 180 and 270)
-//      text            - the text to render
-//      size            - the number of characters in "text" or -1 to read until the nul character
+//      text            - the UTF-8 text to render
+//      size            - the number of bytes in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
 void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c);
@@ -124,8 +124,8 @@ void		pte_drawTextRect(pte_Placement o, pte_font* f, int x1, int y1, int x2, int
 //      font            - the font to use, create using the pte_getFont() function
 //      x1, y1, x2, y2  - the rectangle
 //		r				- the rotation (0, 90, 180 and 270)
-//      text            - the text to render
-//      size            - the number of characters in "text" or -1 to read until the nul character
+//      text            - the UTF-8 text to render
+//      size            - the number of bytes in "text" or -1 to read until the nul character
 //      c               - the colour to draw the text, this is passed directly to the hw_blendPixel function
 //
 void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x2, int y2, int r, const char* text, size_t size, int c);
@@ -133,8 +133,8 @@ void pte_drawTextRectWrapped(pte_Placement o, pte_font* f, int x1, int y1, int x
 // Determine the bounding rectangle for a string in pixels
 // Parameters:
 //      font        - the font to use, create using the pte_getFont() function
-//      text        - the text to measure
-//      size        - the number of characters in "text" or -1 to read until the nul character
+//      text        - the UTF-8 text to measure
+//      size        - the number of bytes in "text" or -1 to read until the nul character
 //      dx          - the width of the string in pixels
 //      dy          - the height of the string in pixels
 //

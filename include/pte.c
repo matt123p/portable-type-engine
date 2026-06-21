@@ -25,11 +25,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <stdlib.h>
-#include <string.h>
 #include "pte.h"
 
 // Find a character in a font
-static const pte_glyph* findChar(unsigned char c, const pte_base_font* f)
+static const pte_glyph* findChar(int c, const pte_base_font* f)
 {
 	// Do a binary search to find the character
 	int l = 0;
@@ -85,7 +84,7 @@ static const pte_glyph* findChar(unsigned char c, const pte_base_font* f)
 	return NULL;
 }
 
-static int searchKern(unsigned char c, const pte_base_font* f)
+static int searchKern(int c, const pte_base_font* f)
 {
 	// Do a binary search to find the character
 	int l = 0;
@@ -176,16 +175,19 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
 	int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
 {
-	unsigned char line_acc[128];
-
 	int x_start = -((rb * sub_offset_x) / ra) / rb;
+	size_t line_acc_size = (size_t)src_width + (size_t)(-x_start) + 1;
+	unsigned int* line_acc = (unsigned int*)calloc(line_acc_size, sizeof(*line_acc));
 	int x = x_start;
 	int c = rb;
 	int p = 0;
 	int count = lines;
 	int div = 0;
 
-	memset(line_acc, 0, sizeof(line_acc));
+	if (!line_acc)
+	{
+		return;
+	}
 
 	// Accumulate a horizontal line of data
 	while (count > 0)
@@ -260,13 +262,72 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* col, int* pixe
 			div = 0;
 		}
 	}
+
+	free(line_acc);
+}
+
+// Decode one UTF-8 code point. Invalid sequences fall back to their first byte.
+static int nextChar(const char* text, size_t available, int* bytes)
+{
+	const unsigned char* s = (const unsigned char*)text;
+	int length;
+	int code;
+	int i;
+
+	*bytes = 1;
+	if (s[0] < 0x80)
+	{
+		return s[0];
+	}
+	if (s[0] >= 0xc2 && s[0] <= 0xdf)
+	{
+		length = 2;
+		code = s[0] & 0x1f;
+	}
+	else if (s[0] >= 0xe0 && s[0] <= 0xef)
+	{
+		length = 3;
+		code = s[0] & 0x0f;
+	}
+	else if (s[0] >= 0xf0 && s[0] <= 0xf4)
+	{
+		length = 4;
+		code = s[0] & 0x07;
+	}
+	else
+	{
+		return s[0];
+	}
+
+	if (available < (size_t)length)
+	{
+		return s[0];
+	}
+	for (i = 1; i < length; ++i)
+	{
+		if (s[i] == 0 || (s[i] & 0xc0) != 0x80)
+		{
+			return s[0];
+		}
+		code = (code << 6) | (s[i] & 0x3f);
+	}
+	if ((length == 3 && code < 0x800)
+		|| (length == 4 && code < 0x10000)
+		|| (code >= 0xd800 && code <= 0xdfff)
+		|| code > 0x10ffff)
+	{
+		return s[0];
+	}
+
+	*bytes = length;
+	return code;
 }
 
 // Draw text on the canvas
 int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size, int c)
 {
 	int last_char = -1;
-	int i;
+	size_t i;
 	const pte_base_font* bf = f->m_font;
 
 	int pixel_xinc = 1;
@@ -299,9 +360,13 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 
 	x = (x * f->m_rb) / f->m_ra;
 	y = (y * f->m_rb) / f->m_ra;
-	for (i = 0; text[i] != 0 && (size == -1 || i < size); ++i)
+	for (i = 0; (size == (size_t)-1 || i < size) && text[i] != 0;)
 	{
-		const pte_glyph* g = findChar(text[i], bf);
+		int bytes;
+		int character = nextChar(text + i,
+			size == (size_t)-1 ? (size_t)-1 : size - i, &bytes);
+		const pte_glyph* g = findChar(character, bf);
+		i += bytes;
 		if (g)
 		{
 			// Bitblt this character across
@@ -323,7 +388,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			int sub_offset_dx;
 			int sub_offset_dy;
 
-			k = findKern(last_char, text[i], bf);
+			k = findKern(last_char, character, bf);
 			if (k)
 			{
 				x += k->amount * pixel_xinc;
@@ -446,7 +511,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 				break;
 			}
 
-			last_char = text[i];
+			last_char = character;
 		}
 	}
 
@@ -457,16 +522,20 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* dy)
 {
 	int last_char = -1;
-	int i;
+	size_t i;
 	const pte_base_font* bf = f->m_font;
 	*dx = 0;
-	for (i = 0; text[i] != 0 && (size == -1 || i < size); ++i)
+	for (i = 0; (size == (size_t)-1 || i < size) && text[i] != 0;)
 	{
-		const pte_glyph* g = findChar(text[i], bf);
+		int bytes;
+		int character = nextChar(text + i,
+			size == (size_t)-1 ? (size_t)-1 : size - i, &bytes);
+		const pte_glyph* g = findChar(character, bf);
+		i += bytes;
 		if (g)
 		{
 			const pte_kern* k;
-			k = findKern(last_char, text[i], bf);
+			k = findKern(last_char, character, bf);
 			if (k)
 			{
 				*dx += g->xadvance + k->amount;
@@ -476,7 +545,7 @@ void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* d
 				*dx += g->xadvance;
 			}
 
-			last_char = text[i];
+			last_char = character;
 		}
 	}
 

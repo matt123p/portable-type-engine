@@ -8,6 +8,11 @@ This tool converts font files (such as TTF files) into C arrays that can be used
 - **Processes Kerning:** Extracts kerning information between pairs of characters, scaling it to the correct pixel values.
 - **Produces C Code:** Outputs a C file with arrays for glyphs, image data, and kerning data, along with a function to retrieve the font structure.
 
+Generated glyph and kerning tables are sorted for PTE's binary searches. Both
+legacy `kern` tables and GPOS pair positioning (including class-based kerning)
+are supported. The runtime allocates its scanline accumulator to fit each glyph,
+so source glyph widths are not limited to 128 pixels.
+
 ## Installation
 
 ### Prerequisites
@@ -37,42 +42,34 @@ pip install Pillow fonttools
     Use the following command format:
 
 ```sh
-python fontsampler.py <font-file-path> [output file-name] [--charset <charset options>]
+python fontsampler.py --font <font-file-path> --output <output-file> [options]
 ```
 
--   \<font-file-path\>: Path to the font file you want to convert (e.g., C:\path\to\yourfont.ttf).
--   [output file-name]: (Optional) Name for the output C file; default is output_font.c.
--   [--charset <charset options>]: (Optional) Define which characters to process using shorthand options.
+-   `--font <font-file-path>`: Required path to the input font file (e.g., `C:\path\to\yourfont.ttf`).
+-   `--output <output-file>`: Required path to the output C file.
+-   [--range <start-end,...>]: (Optional) Add Unicode ranges using decimal or `0x` values. The option can be repeated.
+-   [--symbols <symbols>]: (Optional) Add individual Unicode symbols.
 
 ### Examples
 
 **Basic Usage:**
 
 ```sh
-python fontsampler.py C:\path\to\yourfont.ttf
+python fontsampler.py --font C:\path\to\yourfont.ttf --output myfont.c
 ```
+**Selecting Unicode Characters:**
 
-This command loads the specified font file and creates output_font.c in the same directory.
-
-**Specifying an Output File:**
+Ranges and individual symbols can be combined. Overlapping selections are
+deduplicated. Values may be decimal or `0x`-prefixed Unicode code points, and
+`--range` may be repeated:
 
 ```sh
-python fontsampler.py C:\path\to\yourfont.ttf myfont.c
+python fontsampler.py --font C:\path\to\yourfont.ttf --output myfont.c --range "0x20-0x7e, 0xa0-0xff" --symbols "€£→✓"
 ```
 
-**Using Charset Options:** 
+When neither option is supplied, the tool includes `U+0020-U+007E` and
+`U+00A0-U+00FF`. When `--symbols` is used alone, only those symbols are included.
 
-The --charset option accepts options to choose which ranges to convert:
-
--   n: digits (0-9)
--   a: lowercase letters (a-z)
--   A: uppercase letters (A-Z)
--   Number from 1 to 9 (1, 2, etc.): uses ISO8859-n printable range.  See the [Wikipedia]([https://](https://en.wikipedia.org/wiki/ISO/IEC_8859)) article for more information about the ISO8859 character sets.
--   .: punctuation characters
-
-For example, to process numbers, lowercase, and uppercase letters:
-
-```sh
-python fontsampler.py C:\path\to\yourfont.ttf myfont.c --charset "aAn"
-```
+All text passed to PTE is UTF-8. The `size` argument to drawing and measurement
+functions is a byte count; use `(size_t)-1` for null-terminated text.
 

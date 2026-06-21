@@ -35,3 +35,4 @@ packages/
 *.bmp
 *.ttf
 /FontTool/output_font.c
+/FontTool/__pycache__/*
