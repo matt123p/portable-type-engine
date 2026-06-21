@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	// Draw several lines of red text
 	{
 		pte_font f = pte_getFont(get_Roboto128(), 24);
-		unsigned int colour = RGB(255, 0, 0);
+		unsigned int colour = RGB(0, 0, 0);
 		pte_drawText(&f, 5, y, 0, "I WANDERED lonely as a cloud", -1, colour);
 		y += f.m_line_height;
 		pte_drawText(&f, 5, y, 0, "That floats on high o'er vales and hills,", -1, colour);
