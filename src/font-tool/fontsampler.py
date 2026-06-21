@@ -106,7 +106,7 @@ class FontSampler:
             lineSpacing = ascent + descent
             # lineSpacing = self.get_text_size(font, "M")[1]
             fout.write(str(lineSpacing) + ", " + str(font.size) + " };\n\n")
-            fout.write("pte_base_font *get_" + fontName + str(font.size) + "()\n")
+            fout.write("pte_base_font *get_" + fontName + "()\n")
             fout.write("{\n    return &f;\n}\n")
 
     def output_pixel(self, run_of_on, pixels_so_far, pixel):

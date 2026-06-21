@@ -73,3 +73,6 @@ When neither option is supplied, the tool includes `U+0020-U+007E` and
 All text passed to PTE is UTF-8. The `size` argument to drawing and measurement
 functions is a byte count; use `(size_t)-1` for null-terminated text.
 
+Generated files can also be passed directly to `lv_pte_create()` when using the
+[LVGL add-on](../../docs/lvgl.md); no second conversion format is needed.
+

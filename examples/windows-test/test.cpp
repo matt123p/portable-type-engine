@@ -5,8 +5,8 @@
 
 extern "C"
 {
-#include "../include/pte.h"
-	pte_base_font* get_Roboto128();
+#include "pte.h"
+	pte_base_font* get_Roboto();
 }
 
 // Define our own RGB macro (format: 0x00RRGGBB)
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 
 	// Draw first text line in a large font (green text)
 	{
-		pte_font f = pte_getFont(get_Roboto128(), 40);
+		pte_font f = pte_getFont(get_Roboto(), 40);
 		y = f.m_baseline;
 		pte_drawText(&f, 5, y, 0, "Example text", -1, RGB(75, 255, 0));
 		y += f.m_line_height;
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 		pte_font f;
 		for (int s = 8; s < 32; s += 2)
 		{
-			f = pte_getFont(get_Roboto128(), s);
+			f = pte_getFont(get_Roboto(), s);
 			x = pte_drawText(&f, x, y, 0, c, 1, RGB(0, 0, 0));
 			++c[0];
 		}
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 
 	// Draw several lines of red text
 	{
-		pte_font f = pte_getFont(get_Roboto128(), 24);
+		pte_font f = pte_getFont(get_Roboto(), 24);
 		unsigned int colour = RGB(0, 0, 0);
 		pte_drawText(&f, 5, y, 0, "I WANDERED lonely as a cloud", -1, colour);
 		y += f.m_line_height;
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 
 	// Draw a rotated text
 	{
-		pte_font f = pte_getFont(get_Roboto128(), 16);
+		pte_font f = pte_getFont(get_Roboto(), 16);
 		pte_drawText(&f, 540, 170, 0, "Rotated text", -1, RGB(0, 0, 0));
 		pte_drawText(&f, 520, 170, 90, "Rotated text", -1, RGB(0, 0, 0));
 		pte_drawText(&f, 510, 158, 180, "Rotated text", -1, RGB(0, 0, 0));
@@ -115,7 +115,7 @@ int main(int argc, char* argv[])
 
 	// Draw text in a bounding rectangle
 	{
-		pte_font f = pte_getFont(get_Roboto128(), 16);
+		pte_font f = pte_getFont(get_Roboto(), 16);
 		pte_drawTextRectWrapped(TEXT_CENTER | TEXT_TOP, &f, 20, 300, 200, 400, 0, "Many people like to think that they know what to write in a situation like this.", -1, RGB(0, 0, 0));
 	}
 

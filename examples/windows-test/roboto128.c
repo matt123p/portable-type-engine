@@ -7,7 +7,7 @@
 // Font kerning table: 2460 bytes
 // Total font data size: 67383 bytes (65.8Kb)
 
-#include "../include/pte.h"
+#include "pte.h"
 
 static const pte_glyph Roboto_glyphs[189] = {
  { 32,0,0,0,0,32,0 },
@@ -1608,7 +1608,7 @@ static const pte_kern Roboto_kerns[205] = {
 static pte_base_font f =
 { 128, Roboto_data, 189,Roboto_glyphs, 205,Roboto_kerns, 151, 128 };
 
-pte_base_font* get_Roboto128()
+pte_base_font* get_Roboto()
 {
 	return &f;
 }

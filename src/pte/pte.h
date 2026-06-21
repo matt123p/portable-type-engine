@@ -28,6 +28,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef _PORTABLE_TYPE_ENGINE_H_
 #define _PORTABLE_TYPE_ENGINE_H_
 
+#include <stddef.h>
+
 typedef int pte_Placement;
 #define		TEXT_VCENTER		0x0
 #define		TEXT_LEFT			0x1

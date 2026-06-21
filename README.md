@@ -14,28 +14,93 @@ This project is a font rendering engine written in pure C for low-to-moderate
 resolution displays, such as typical 480p or 720p LCD panels, coupled with a
 lower-power CPU such as an ESP32 or a small ARM processor.
 
+**Portable Type Engine works as a standalone add-on for LVGL 9.4 and newer.**
+It provides runtime-scalable `lv_font_t` fonts without modifying or patching
+LVGL, and supports the Arduino IDE, PlatformIO, and CMake. One compact generated
+font can be rendered at multiple sizes or resized while the application runs.
+See the [LVGL add-on guide](docs/lvgl.md) and [examples](examples/README.md).
+
 <img src="images/Full%20UI%20example.png" width="475"
      alt="Example embedded display interface rendered with Portable Type Engine">
 
-- It is specifically designed for greyscale or color displays.  It renders fonts with anti-aliasing 
-improving the look of the text, particulary for small text.
+- **High-quality embedded display output:** designed for greyscale and color
+  displays, with anti-aliasing that improves readability, particularly at small
+  text sizes.
 
-- It also re-sizes the font at run-time, meaning you do not need to have multiple copies of the font
-for each font size.
+- **Runtime font scaling:** render one compact font definition at many sizes
+  instead of storing a separate font copy for every size.
 
-- It is very fast, which eliminates the need for a font-cache that other scalable font engines
-use.
+- **Fast rendering without a persistent glyph cache:** text is rasterized on
+  demand without the large RAM cache commonly used by scalable font engines.
+
+- **Extremely low RAM footprint:** font data remains in compact, read-only
+  storage, with typical engine working memory around 0.5 KiB for the bundled
+  Roboto font. See [RAM usage](#ram-usage) for the full breakdown and comparison.
 
 ## Features
 
 It has the following features:
 
-1. Very small compact C code, with a single dependency of stdlib
-2. Can render the font at any size at run time from a single font definition
-3. High quality font output - Characters are rendered to sub-pixel placement and with full anti-aliasing
-4. A simple python tool is included to convert any TrueType or OpenType font to a C for inclusion in your project
-5. Compact font definitions, each font is compressed using run-length encoding.
-6. Unicode glyph tables with UTF-8 text input.
+1. Standalone LVGL 9.4+ integration with no changes required to LVGL itself
+2. Extremely low RAM footprint, suitable for memory-constrained embedded systems
+3. Very small compact C code, with a single dependency of stdlib
+4. Can render the font at any size at run time from a single font definition
+5. High quality font output - Characters are rendered to sub-pixel placement and with full anti-aliasing
+6. A simple python tool is included to convert any TrueType or OpenType font to a C for inclusion in your project
+7. Compact font definitions, each font is compressed using run-length encoding.
+8. Unicode glyph tables with UTF-8 text input.
+
+### RAM usage
+
+PTE preprocesses TTF and OTF files on a development machine. The embedded
+device therefore does not need a TrueType parser, outline data structures, or a
+persistent rendered-glyph cache. The generated glyph, kerning, and compressed
+bitmap arrays are declared `const`, so embedded toolchains can keep them in
+flash/ROM rather than copying them into RAM.
+
+For the standalone renderer, each generated font has a 32-byte base descriptor
+on a typical 32-bit target, and each active size uses a 20-byte `pte_font`
+handle (24 bytes on a typical 64-bit target). While a glyph is being rendered,
+PTE allocates one scanline accumulator whose approximate size is:
+
+```text
+4 * (encoded glyph width + sub-pixel correction + 1) bytes
+```
+
+This allocation is released immediately after the scanline is rendered. For
+the bundled Roboto font, encoded at 128 pixels, the widest glyph is 118 pixels;
+the accumulator is therefore about 0.5 KiB. There is no allocation proportional
+to the number of characters in the font or the amount of text already drawn.
+Allocator bookkeeping and application/display buffers are not included in
+these figures.
+
+When used with LVGL, PTE also has one `lv_font_t` and a small adapter descriptor
+per active size. LVGL supplies an A8 output buffer for the current glyph, which
+is approximately `rendered width * rendered height` bytes plus stride and draw
+buffer metadata. That glyph buffer is part of LVGL's rendering pipeline rather
+than a persistent PTE cache.
+
+#### Compared with Tiny TTF and similar engines
+
+LVGL's Tiny TTF parses the original TTF at runtime and maintains glyph-metric,
+rendered-bitmap, and kerning caches. For example, LVGL 9.6 defaults to 128 glyph
+entries and 256 kerning entries; defaults can differ between LVGL versions.
+Every cached A8 glyph additionally consumes roughly `width * height` bytes. The
+exact total depends on font size, characters used, allocator overhead, and cache
+configuration, but it can grow to tens of kilobytes as rendered glyphs fill the
+cache.
+
+Tiny TTF can reduce its glyph cache with the `_ex` creation functions, including
+setting the glyph cache size to zero, and it can stream a font from a filesystem
+when file support is enabled. Those options trade retained RAM for more runtime
+parsing and rasterization work. FreeType and other runtime scalable-font engines
+make similar trade-offs and vary considerably with their selected modules and
+cache settings.
+
+PTE instead pays the conversion cost before deployment and keeps runtime memory
+bounded by the current glyph. This makes it a strong fit when predictable,
+often sub-kilobyte engine working memory matters more than loading arbitrary
+font files at runtime.
 
 ### Full anti-aliasing
 
@@ -62,15 +127,15 @@ spacing even when a character does not begin on a pixel boundary.
 How to use:
 
 1. Convert a font file to a C file (or use the Roboto.c which is included in the test project)
-2. Include the font file and the rendering engine (pte.c) in your project
-3. Implement the [`hw_blendPixel`](include/README.md#hardware-callback) callback used by the engine to draw each pixel.
+2. Include the font file and the rendering engine (`src/pte/pte.c`) in your project
+3. Implement the [`hw_blendPixel`](src/pte/README.md#hardware-callback) callback used by the engine to draw each pixel.
 4. Call `pte_drawText()`, `pte_drawTextRect()` or `pte_measureText()` to render text on to your display.
 
 
 Example usage
 
 ``` C
-pte_font f = pte_getFont(get_Roboto128(), 40);
+pte_font f = pte_getFont(get_Roboto(), 40);
 y = f.m_baseline;
 pte_drawText(&f, 5, y, 0, "Example text", -1, 0);
 y += f.m_line_height;
@@ -78,5 +143,24 @@ y += f.m_line_height;
 
 ## Documentation
 
-- [C API reference](include/README.md)
-- [Font conversion tool guide](FontTool/README.md)
+- [C API reference](src/pte/README.md)
+- [Font conversion tool guide](src/font-tool/README.md)
+- [LVGL add-on guide](docs/lvgl.md)
+
+## LVGL 9 add-on
+
+This repository is also an Arduino and PlatformIO library. Add it alongside
+LVGL, include `lv_pte.h`, and create an LVGL font directly from any font emitted
+by the converter:
+
+```c
+#include <lv_pte.h>
+
+pte_base_font * get_Roboto(void);
+
+lv_font_t * font = lv_pte_create(get_Roboto(), 24);
+lv_obj_set_style_text_font(label, font, 0);
+```
+
+No LVGL source changes or `lv_conf.h` option are required. See the add-on guide
+for PlatformIO and Arduino installation, resizing, lifetime, and testing.

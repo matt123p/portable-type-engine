@@ -21,7 +21,7 @@
     <ClCompile Include="..\test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\include\pte.c">
+    <ClCompile Include="..\..\..\src\pte\pte.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

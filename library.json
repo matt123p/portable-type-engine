@@ -1,0 +1,19 @@
+{
+  "name": "PortableTypeEngine",
+  "version": "2.1.0",
+  "description": "Compact runtime-scalable fonts with an LVGL 9 adapter",
+  "keywords": ["font", "lvgl", "display", "embedded", "unicode"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matt123p/portable-type-engine.git"
+  },
+  "license": "BSD-3-Clause",
+  "frameworks": "*",
+  "platforms": "*",
+  "dependencies": {
+    "lvgl/lvgl": ">=9.4.0"
+  },
+  "build": {
+    "srcFilter": ["+<pte/*.c>", "+<lvgl/*.c>"]
+  }
+}

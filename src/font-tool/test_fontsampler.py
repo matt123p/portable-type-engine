@@ -63,6 +63,24 @@ class FontSamplerTests(unittest.TestCase):
         self.assertEqual([int(line.split(",", 1)[0][2:]) for line in glyph_lines],
                          [65, 66, 97])
 
+    def test_generated_accessor_does_not_include_source_size(self):
+        sampler = self.sampler_with_glyphs()
+        sampled_font = NS(
+            size=128,
+            getname=lambda: ("Test Font", "Regular"),
+            getmetrics=lambda: (100, 20),
+        )
+        tt_font = FakeFont({65: "A", 66: "B", 97: "a"},
+                           head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "font.c"
+            sampler.convertFont(sampled_font, tt_font, output)
+            generated = output.read_text()
+
+        self.assertIn("pte_base_font *get_Test_Font()", generated)
+        self.assertNotIn("get_Test_Font128", generated)
+
     def test_range_and_symbols_options_can_be_mixed(self):
         args = fontsampler.create_argument_parser().parse_args([
             "--font", "font.ttf", "--output", "font.c",

@@ -34,5 +34,9 @@ _ReSharper*/
 packages/
 *.bmp
 *.ttf
-/FontTool/output_font.c
-/FontTool/__pycache__/*
+/src/font-tool/output_font.c
+/src/font-tool/__pycache__/*
+/.pio/
+/build*/
+.venv/
+__pycache__/
