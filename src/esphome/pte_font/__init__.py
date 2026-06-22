@@ -5,14 +5,19 @@ from pathlib import Path
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import font
-from esphome.const import CONF_FILE, CONF_FONT, CONF_ID, CONF_SIZE, CONF_SOURCE
+from esphome.const import CONF_FILE, CONF_FONT, CONF_ID, CONF_SOURCE
 from esphome.core import CORE
 from esphome.core.config import add_includes
 
 MULTI_CONF = True
 
 pte_font_ns = cg.esphome_ns.namespace("pte_font")
-PteFont = pte_font_ns.class_("PteFont", font.Font, cg.Component)
+PteFont = pte_font_ns.class_("PteFont", font.Font)
+
+CONF_SOURCE_SIZE = "source_size"
+CONF_SIZE_IDS = "_size_ids"
+MIN_FONT_SIZE = 6
+MAX_SOURCE_SIZE = 1024
 
 _COMPONENT_DIR = Path(__file__).parent
 _FONT_REGISTRY = json.loads(
@@ -38,6 +43,17 @@ def _validate_c_file(value):
     return str(path)
 
 
+def _read_generated_source_size(path):
+    with Path(path).open(encoding="utf-8") as source_file:
+        header = source_file.read(4096)
+    match = re.search(r"Font Pixel Height Sampled:\s*([0-9]+)", header)
+    if match is None:
+        raise cv.Invalid(
+            "generated font header has no sample size; set source_size explicitly"
+        )
+    return cv.int_range(min=1, max=MAX_SOURCE_SIZE)(match.group(1))
+
+
 def _validate_config(config):
     # ESPHome's LVGL validator accepts IDs typed as font::Font only when the
     # font integration is marked as loaded. PteFont supplies the same LVGL
@@ -58,19 +74,43 @@ def _validate_config(config):
         )
     if not has_file and not has_font:
         config[CONF_FONT] = "roboto_regular"
+
+    if has_file:
+        source_size = config.get(CONF_SOURCE_SIZE)
+        if source_size is None:
+            source_size = _read_generated_source_size(config[CONF_FILE])
+    else:
+        if CONF_SOURCE_SIZE in config:
+            raise cv.Invalid("source_size is only valid with a custom file")
+        source_size = _FONT_REGISTRY[config[CONF_FONT]]["source_size"]
+
+    max_size = source_size * 3 // 4
+    if max_size < MIN_FONT_SIZE:
+        raise cv.Invalid(
+            f"font sample size {source_size} is too small; size {MIN_FONT_SIZE} cannot be generated"
+        )
+
+    base_id = config[CONF_ID]
+    config[CONF_SOURCE_SIZE] = source_size
+    config[CONF_SIZE_IDS] = {
+        size: cv.declare_id(PteFont)(f"{base_id}_{size}")
+        for size in range(MIN_FONT_SIZE, max_size + 1)
+    }
     return config
 
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
-            cv.GenerateID(): cv.declare_id(PteFont),
+            cv.Required(CONF_ID): cv.All(cv.string_strict, cv.validate_id_name),
             cv.Optional(CONF_FONT): cv.one_of(*_FONT_NAMES, lower=True),
             cv.Optional(CONF_FILE): _validate_c_file,
             cv.Optional(CONF_SOURCE): _validate_source,
-            cv.Required(CONF_SIZE): cv.int_range(min=1, max=512),
+            cv.Optional(CONF_SOURCE_SIZE): cv.int_range(
+                min=1, max=MAX_SOURCE_SIZE
+            ),
         }
-    ).extend(cv.COMPONENT_SCHEMA),
+    ),
     _validate_config,
 )
 
@@ -101,7 +141,7 @@ async def to_code(config):
     else:
         source = _FONT_REGISTRY[config[CONF_FONT]]["source"]
 
-    var = cg.new_Pvariable(
-        config[CONF_ID], cg.RawExpression(f"{source}()"), config[CONF_SIZE]
-    )
-    await cg.register_component(var, config)
+    for size, size_id in config[CONF_SIZE_IDS].items():
+        cg.new_Pvariable(
+            size_id, cg.RawExpression(f"{source}()"), size
+        )

@@ -4,30 +4,35 @@
     "roboto_regular": {
       "file": "roboto_regular.c",
       "source": "get_Roboto_Regular",
+      "source_size": 128,
       "family": "Roboto",
       "style": "Regular"
     },
     "roboto_bold": {
       "file": "roboto_bold.c",
       "source": "get_Roboto_Bold",
+      "source_size": 128,
       "family": "Roboto",
       "style": "Bold"
     },
     "roboto_italic": {
       "file": "roboto_italic.c",
       "source": "get_Roboto_Italic",
+      "source_size": 128,
       "family": "Roboto",
       "style": "Italic"
     },
     "roboto_bold_italic": {
       "file": "roboto_bold_italic.c",
       "source": "get_Roboto_Bold_Italic",
+      "source_size": 128,
       "family": "Roboto",
       "style": "Bold Italic"
     },
     "material_icons": {
       "file": "material_icons.c",
       "source": "get_Material_Icons",
+      "source_size": 128,
       "family": "Material Icons",
       "style": "Regular"
     }

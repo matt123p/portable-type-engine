@@ -11,7 +11,7 @@
   "bundled_fonts": "pte_font/fonts.json",
   "configuration": {
     "multi_conf": true,
-    "required": ["id", "size"],
+    "required": ["id"],
     "bundled_font_key": "font",
     "custom_font_keys": ["file", "source"]
   }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "esphome/core/component.h"
+#include "esphome/core/log.h"
 #include "lv_pte.h"
 
 extern "C" {
@@ -13,19 +13,18 @@ pte_base_font *get_Material_Icons(void);
 
 namespace esphome::pte_font {
 
-class PteFont : public Component {
+class PteFont {
  public:
   PteFont(const pte_base_font *source, int size) : source_(source), size_(size) {
     this->initialized_ = lv_pte_init(&this->lv_font_, source, size);
+    if (!this->initialized_)
+      ESP_LOGE("pte_font", "Failed to initialize PTE font at size %d", size);
   }
 
   ~PteFont() {
     if (this->initialized_)
       lv_pte_deinit(&this->lv_font_);
   }
-
-  void setup() override;
-  void dump_config() override;
 
   void set_size(int size);
   int get_size() const { return this->size_; }

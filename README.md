@@ -55,10 +55,19 @@ external_components:
     components: [pte_font]
 
 pte_font:
-  - id: ui_font_24
+  - id: ui_font
     font: roboto_regular
-    size: 24
+
+lvgl:
+  widgets:
+    - label:
+        text: "PTE at 24 pixels"
+        text_font: ui_font_24
 ```
+
+One `pte_font` entry automatically creates suffixed IDs from size 6 through
+75% of the generated font's sample size. The bundled 128-pixel fonts therefore
+provide `ui_font_6` through `ui_font_96`.
 
 Python, Pillow, FontTools, and local TTF/OTF files are required only when
 building a custom font; they are not needed for the bundled fonts. See the

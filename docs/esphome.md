@@ -36,26 +36,27 @@ The available bundled names are:
 - `roboto_bold_italic`
 - `material_icons`
 
-Declare each face and size that the UI needs and give it an ordinary ESPHome
-ID:
+Declare each face once and give it a base ESPHome ID:
 
 ```yaml
 pte_font:
-  - id: ui_font_14
-    size: 14
-
-  - id: ui_font_20
+  - id: ui_font
     font: roboto_regular
-    size: 20
 
-  - id: ui_bold_32
+  - id: ui_bold
     font: roboto_bold
-    size: 32
 
-  - id: ui_icons_28
+  - id: ui_icons
     font: material_icons
-    size: 28
 ```
+
+The component creates suffixed IDs for every integer size from 6 through 75%
+of the generated font's sample size, rounded down. All bundled fonts are
+sampled at 128 pixels, so the declarations above create:
+
+- `ui_font_6` through `ui_font_96`
+- `ui_bold_6` through `ui_bold_96`
+- `ui_icons_6` through `ui_icons_96`
 
 Place the `pte_font:` block before the `lvgl:` block in the YAML file or merged
 package order. ESPHome currently validates custom font providers in load order;
@@ -78,8 +79,8 @@ lvgl:
             text_font: ui_font_14
 ```
 
-Each configured size has a separate lightweight LVGL font object. Multiple
-sizes of the same face share its bundled glyph data in flash.
+Each generated ID has a lightweight LVGL font object. All sizes of the same
+face share its bundled glyph data in flash.
 
 ## Requirements
 
@@ -136,16 +137,27 @@ Select the generated source with `file` and its exported getter with `source`:
 
 ```yaml
 pte_font:
-  - id: ui_custom_24
-    size: 24
+  - id: ui_custom
     file: fonts/my_font_pte.c
     source: get_My_Font
 ```
 
-The source is the getter name without parentheses. Several `pte_font` entries
-may reference the same file and source at different sizes. The component copies
-and compiles the C file and supplies the required PTE headers; no manual include
-entry or declaration header is needed.
+The source is the getter name without parentheses. The component reads the
+`Font Pixel Height Sampled` value written in the generated file's header and
+creates `ui_custom_6` through 75% of that value. It copies and compiles the C
+file and supplies the required PTE headers; no manual include entry or
+declaration header is needed.
+
+For a hand-written PTE source without the converter header, specify its sample
+size explicitly:
+
+```yaml
+pte_font:
+  - id: ui_custom
+    file: fonts/my_font_pte.c
+    source: get_My_Font
+    source_size: 128
+```
 
 Do not reference a bundled C file through `file`; select it using its bundled
 `font` name. The component rejects this configuration to prevent duplicate
