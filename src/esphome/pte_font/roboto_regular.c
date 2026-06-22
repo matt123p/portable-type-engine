@@ -1963,7 +1963,7 @@ static const pte_kern_entry Roboto_Regular_kern_entries[830] = {
 };
 
 static pte_base_font f =
- { 128, Roboto_Regular_data, 191,Roboto_Regular_glyphs, Roboto_Regular_glyph_kern_rows, Roboto_Regular_kern_rows, Roboto_Regular_kern_entries, 151, 128 };
+ { 128, Roboto_Regular_data, 191,Roboto_Regular_glyphs, Roboto_Regular_glyph_kern_rows, Roboto_Regular_kern_rows, Roboto_Regular_kern_entries, 151, 119 };
 
 pte_base_font *get_Roboto_Regular()
 {

@@ -2003,7 +2003,7 @@ static const pte_kern_entry Roboto_Italic_kern_entries[830] = {
 };
 
 static pte_base_font f =
- { 128, Roboto_Italic_data, 191,Roboto_Italic_glyphs, Roboto_Italic_glyph_kern_rows, Roboto_Italic_kern_rows, Roboto_Italic_kern_entries, 151, 128 };
+ { 128, Roboto_Italic_data, 191,Roboto_Italic_glyphs, Roboto_Italic_glyph_kern_rows, Roboto_Italic_kern_rows, Roboto_Italic_kern_entries, 151, 119 };
 
 pte_base_font *get_Roboto_Italic()
 {

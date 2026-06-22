@@ -20357,7 +20357,7 @@ static const unsigned char Material_Icons_data[905563] = {
 };
 
 static pte_base_font f =
- { 128, Material_Icons_data, 2226,Material_Icons_glyphs, 0,0,0,128, 128 };
+ { 128, Material_Icons_data, 2226,Material_Icons_glyphs, 0,0,0,128, 112 };
 
 pte_base_font *get_Material_Icons()
 {

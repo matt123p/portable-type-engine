@@ -139,6 +139,23 @@ class FontSamplerTests(unittest.TestCase):
         self.assertIn("pte_base_font *get_Test_Font()", generated)
         self.assertNotIn("get_Test_Font128", generated)
 
+    def test_generated_font_uses_ascent_as_baseline(self):
+        sampler = self.sampler_with_glyphs()
+        sampled_font = NS(
+            size=128,
+            getname=lambda: ("Test Font", "Regular"),
+            getmetrics=lambda: (100, 20),
+        )
+        tt_font = FakeFont({65: "A", 66: "B", 97: "a"},
+                           head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "font.c"
+            sampler.convertFont(sampled_font, tt_font, output)
+            generated = output.read_text()
+
+        self.assertIn("0,0,0,120, 100 };", generated)
+
     def test_generation_command_is_embedded(self):
         sampler = self.sampler_with_glyphs()
         sampled_font = NS(

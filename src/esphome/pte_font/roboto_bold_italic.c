@@ -2133,7 +2133,7 @@ static const pte_kern_entry Roboto_Bold_Italic_kern_entries[846] = {
 };
 
 static pte_base_font f =
- { 128, Roboto_Bold_Italic_data, 191,Roboto_Bold_Italic_glyphs, Roboto_Bold_Italic_glyph_kern_rows, Roboto_Bold_Italic_kern_rows, Roboto_Bold_Italic_kern_entries, 151, 128 };
+ { 128, Roboto_Bold_Italic_data, 191,Roboto_Bold_Italic_glyphs, Roboto_Bold_Italic_glyph_kern_rows, Roboto_Bold_Italic_kern_rows, Roboto_Bold_Italic_kern_entries, 151, 119 };
 
 pte_base_font *get_Roboto_Bold_Italic()
 {

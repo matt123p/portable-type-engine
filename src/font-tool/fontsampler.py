@@ -141,7 +141,7 @@ class FontSampler:
             ascent, descent = font.getmetrics()
             lineSpacing = ascent + descent
             # lineSpacing = self.get_text_size(font, "M")[1]
-            fout.write(str(lineSpacing) + ", " + str(font.size) + " };\n\n")
+            fout.write(str(lineSpacing) + ", " + str(ascent) + " };\n\n")
             fout.write("pte_base_font *get_" + fontName + "()\n")
             fout.write("{\n    return &f;\n}\n")
 
