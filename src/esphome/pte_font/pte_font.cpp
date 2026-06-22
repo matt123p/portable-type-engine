@@ -1,6 +1,6 @@
 #include "pte_font.h"
 
-namespace esphome::pte_font {
+namespace esphome::pte_font_component {
 
 void PteFont::set_size(int size) {
   if (!this->initialized_ || size <= 0)
@@ -9,4 +9,4 @@ void PteFont::set_size(int size) {
   this->size_ = size;
 }
 
-}  // namespace esphome::pte_font
+}  // namespace esphome::pte_font_component

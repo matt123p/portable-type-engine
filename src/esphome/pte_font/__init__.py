@@ -12,7 +12,7 @@ from esphome.core.config import add_includes
 
 MULTI_CONF = True
 
-pte_font_ns = cg.esphome_ns.namespace("pte_font")
+pte_font_ns = cg.esphome_ns.namespace("pte_font_component")
 PteFont = pte_font_ns.class_("PteFont", font.Font)
 
 CONF_SOURCE_SIZE = "source_size"

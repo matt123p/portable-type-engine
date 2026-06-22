@@ -11,7 +11,7 @@ pte_base_font *get_Roboto_Bold_Italic(void);
 pte_base_font *get_Material_Icons(void);
 }
 
-namespace esphome::pte_font {
+namespace esphome::pte_font_component {
 
 class PteFont {
  public:
@@ -37,16 +37,16 @@ class PteFont {
   lv_font_t lv_font_{};
 };
 
-}  // namespace esphome::pte_font
+}  // namespace esphome::pte_font_component
 
 namespace esphome::lvgl {
 
-inline void lv_obj_set_style_text_font(lv_obj_t *obj, const pte_font::PteFont *font,
+inline void lv_obj_set_style_text_font(lv_obj_t *obj, const pte_font_component::PteFont *font,
                                        lv_style_selector_t selector) {
   ::lv_obj_set_style_text_font(obj, font->get_lv_font(), selector);
 }
 
-inline void lv_style_set_text_font(lv_style_t *style, const pte_font::PteFont *font) {
+inline void lv_style_set_text_font(lv_style_t *style, const pte_font_component::PteFont *font) {
   ::lv_style_set_text_font(style, font->get_lv_font());
 }
 
