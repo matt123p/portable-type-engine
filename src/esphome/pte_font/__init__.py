@@ -82,7 +82,8 @@ async def to_code(config):
     # when no ESPHome bitmap font instance is configured. In that case provide
     # only the declaration needed by those inline overloads.
     if "font" not in CORE.config:
-        cg.add_build_flag(f"-I{_COMPONENT_DIR / 'compat'}")
+        compat_include = (_COMPONENT_DIR / "compat").as_posix()
+        cg.add_build_flag(f'-I"{compat_include}"')
 
     if CONF_FILE in config:
         source = config[CONF_SOURCE]
