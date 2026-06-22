@@ -62,7 +62,8 @@ These IDs are available to ESPHome during configuration validation, but the
 component emits C++ font objects only for IDs that are actually referenced.
 References from LVGL properties, styles, default fonts, and `id(...)` inside
 lambdas are detected. Unused sizes consume no font-object RAM or descriptor
-allocation in the firmware.
+allocation in the firmware. If none of a bundled face's IDs are referenced,
+that face's generated C source is excluded from the build as well.
 
 Place the `pte_font:` block before the `lvgl:` block in the YAML file or merged
 package order. ESPHome currently validates custom font providers in load order;

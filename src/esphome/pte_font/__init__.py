@@ -19,6 +19,7 @@ CONF_SOURCE_SIZE = "source_size"
 CONF_SIZE_IDS = "_size_ids"
 MIN_FONT_SIZE = 6
 MAX_SOURCE_SIZE = 1024
+DOMAIN = "pte_font"
 
 _COMPONENT_DIR = Path(__file__).parent
 _FONT_REGISTRY = json.loads(
@@ -28,6 +29,24 @@ _FONT_NAMES = tuple(_FONT_REGISTRY)
 _BUNDLED_SOURCES = {font["source"] for font in _FONT_REGISTRY.values()}
 _ADDED_CUSTOM_FILES: set[str] = set()
 _DECLARED_CUSTOM_SOURCES: set[str] = set()
+
+
+def _get_codegen_data():
+    return CORE.data.setdefault(
+        DOMAIN, {"runtime_used": False, "bundled_files": set()}
+    )
+
+
+def FILTER_SOURCE_FILES():
+    data = _get_codegen_data()
+    excluded = [
+        font["file"]
+        for font in _FONT_REGISTRY.values()
+        if font["file"] not in data["bundled_files"]
+    ]
+    if not data["runtime_used"]:
+        excluded.extend(("lv_pte.c", "pte_font.cpp"))
+    return excluded
 
 
 def _validate_source(value):
@@ -130,6 +149,9 @@ async def to_code(config):
     if not used_sizes:
         return
 
+    data = _get_codegen_data()
+    data["runtime_used"] = True
+
     cg.add_define("USE_FONT")
     cg.add_build_flag("-Isrc/esphome/components/pte_font")
     # USE_FONT makes LVGL's compatibility overloads include font/font.h even
@@ -153,7 +175,9 @@ async def to_code(config):
             )
             _DECLARED_CUSTOM_SOURCES.add(source)
     else:
-        source = _FONT_REGISTRY[config[CONF_FONT]]["source"]
+        bundled_font = _FONT_REGISTRY[config[CONF_FONT]]
+        source = bundled_font["source"]
+        data["bundled_files"].add(bundled_font["file"])
 
     for size, size_id in used_sizes.items():
         cg.new_Pvariable(
