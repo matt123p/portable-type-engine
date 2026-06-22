@@ -126,7 +126,7 @@ spacing even when a character does not begin on a pixel boundary.
 
 How to use:
 
-1. Convert a font file to a C file (or use the Roboto.c which is included in the test project)
+1. Convert a font file to a C file (or use `examples/fonts/roboto_regular.c`)
 2. Include the font file and the rendering engine (`src/pte/pte.c`) in your project
 3. Implement the [`hw_blendPixel`](src/pte/README.md#hardware-callback) callback used by the engine to draw each pixel.
 4. Call `pte_drawText()`, `pte_drawTextRect()` or `pte_measureText()` to render text on to your display.
@@ -135,7 +135,7 @@ How to use:
 Example usage
 
 ``` C
-pte_font f = pte_getFont(get_Roboto(), 40);
+pte_font f = pte_getFont(get_Roboto_Regular(), 40);
 y = f.m_baseline;
 pte_drawText(&f, 5, y, 0, "Example text", -1, 0);
 y += f.m_line_height;
@@ -156,9 +156,9 @@ by the converter:
 ```c
 #include <lv_pte.h>
 
-pte_base_font * get_Roboto(void);
+pte_base_font * get_Roboto_Regular(void);
 
-lv_font_t * font = lv_pte_create(get_Roboto(), 24);
+lv_font_t * font = lv_pte_create(get_Roboto_Regular(), 24);
 lv_obj_set_style_text_font(label, font, 0);
 ```
 
