@@ -29,6 +29,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define _PORTABLE_TYPE_ENGINE_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef int pte_Placement;
 #define		TEXT_VCENTER		0x0
@@ -52,11 +53,17 @@ typedef struct
 
 typedef struct
 {
-	int first;
-	int second;
+	uint32_t offset;
+	uint16_t count;
+} pte_kern_row;
 
-	int amount;
-} pte_kern;
+typedef struct
+{
+	uint16_t second_glyph;
+	int16_t amount;
+} pte_kern_entry;
+
+#define PTE_NO_KERN_ROW UINT16_MAX
 
 typedef struct
 {
@@ -71,8 +78,9 @@ typedef struct
 	const pte_glyph* m_gylphs;
 
 	// The kerning data
-	int                 m_number_kerns;
-	const pte_kern* m_kerns;
+	const uint16_t* m_glyph_kern_rows;
+	const pte_kern_row* m_kern_rows;
+	const pte_kern_entry* m_kern_entries;
 
 	// Placement
 	int                 m_line_height;

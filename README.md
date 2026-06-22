@@ -58,7 +58,7 @@ persistent rendered-glyph cache. The generated glyph, kerning, and compressed
 bitmap arrays are declared `const`, so embedded toolchains can keep them in
 flash/ROM rather than copying them into RAM.
 
-For the standalone renderer, each generated font has a 32-byte base descriptor
+For the standalone renderer, each generated font has a 36-byte base descriptor
 on a typical 32-bit target, and each active size uses a 20-byte `pte_font`
 handle (24 bytes on a typical 64-bit target). While a glyph is being rendered,
 PTE allocates one scanline accumulator whose approximate size is:

@@ -74,6 +74,33 @@ class FontSamplerTests(unittest.TestCase):
                 chr(code), code, 1, 1, 0, 0, code, 1)
         return sampler
 
+    def test_identical_kerning_rows_are_shared(self):
+        sampler = self.sampler_with_glyphs()
+        sampler.m_kerns = [
+            fontsampler.Kern(65, 66, -10),
+            fontsampler.Kern(97, 66, -10),
+        ]
+        sampled_font = NS(size=1000)
+        tt_font = FakeFont({}, head=NS(unitsPerEm=1000))
+
+        glyph_rows, rows, entries = sampler.buildKernRows(sampled_font, tt_font)
+
+        self.assertEqual(glyph_rows, [0, 0xffff, 0])
+        self.assertEqual(rows, [(0, 1)])
+        self.assertEqual(entries, [(1, -10)])
+
+    def test_zero_scaled_kerning_is_omitted(self):
+        sampler = self.sampler_with_glyphs()
+        sampler.m_kerns = [fontsampler.Kern(65, 66, 1)]
+        sampled_font = NS(size=128)
+        tt_font = FakeFont({}, head=NS(unitsPerEm=1000))
+
+        glyph_rows, rows, entries = sampler.buildKernRows(sampled_font, tt_font)
+
+        self.assertEqual(glyph_rows, [0xffff, 0xffff, 0xffff])
+        self.assertEqual(rows, [])
+        self.assertEqual(entries, [])
+
     def test_glyph_output_is_sorted(self):
         sampler = self.sampler_with_glyphs()
         sampled_font = NS(

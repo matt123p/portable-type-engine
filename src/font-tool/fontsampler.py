@@ -47,6 +47,7 @@ class FontSampler:
 
         # Calculate kerning for each pair of glyphs
         self.calcAllKerns(tt_font)
+        glyph_kern_rows, kern_rows, kern_entries = self.buildKernRows(font, tt_font)
 
         fontName = font.getname()[0].replace(" ", "_")
         with open(filename, 'w', encoding='utf-8', newline='\n') as fout:
@@ -57,10 +58,12 @@ class FontSampler:
             if generation_command:
                 fout.write("// Recreate with:\n")
                 fout.write("// " + generation_command + "\n\n")
-            # Calculate total data size: image data + glyph data + kern data
-            total_bytes = len(self.m_data) + (28 * len(self.m_glyphs)) + (12 * len(self.m_kerns))
+            # pte_kern_row is eight bytes after normal C structure alignment.
+            kern_bytes = ((2 * len(glyph_kern_rows)) + (8 * len(kern_rows))
+                          + (4 * len(kern_entries)) if kern_entries else 0)
+            total_bytes = len(self.m_data) + (28 * len(self.m_glyphs)) + kern_bytes
             fout.write("// Font data size: " + str(len(self.m_data) + (28 * len(self.m_glyphs))) + " bytes\n")
-            fout.write("// Font kerning table: " + str(12 * len(self.m_kerns)) + " bytes\n")
+            fout.write("// Font kerning table: " + str(kern_bytes) + " bytes\n")
             fout.write("// Total font data size: " + str(total_bytes) + " bytes (" + format(total_bytes/1024.0,".1f") + "Kb)\n\n")
 
             fout.write("#include \"pte.h\"\n\n")
@@ -86,11 +89,28 @@ class FontSampler:
                 count += 1
             fout.write("\n};\n\n")
 
-            # Output kerning data if available
-            if self.m_kerns:
-                fout.write("static const pte_kern " + fontName + "_kerns[" + str(len(self.m_kerns)) + "] = {\n")
-                for k in self.m_kerns:
-                    fout.write(" { " + str(k.first) + "," + str(k.second) + "," + str(self.scaleKern(k.amount, font, tt_font)) + " },\n")
+            # Output shared kerning rows using glyph indices.
+            if kern_entries:
+                fout.write("static const uint16_t " + fontName + "_glyph_kern_rows["
+                           + str(len(glyph_kern_rows)) + "] = {\n ")
+                for i, row_index in enumerate(glyph_kern_rows):
+                    if i and i % 20 == 0:
+                        fout.write("\n ")
+                    fout.write(str(row_index))
+                    if i != len(glyph_kern_rows) - 1:
+                        fout.write(",")
+                fout.write("\n};\n\n")
+
+                fout.write("static const pte_kern_row " + fontName + "_kern_rows["
+                           + str(len(kern_rows)) + "] = {\n")
+                for offset, count in kern_rows:
+                    fout.write(" { " + str(offset) + "," + str(count) + " },\n")
+                fout.write("};\n\n")
+
+                fout.write("static const pte_kern_entry " + fontName + "_kern_entries["
+                           + str(len(kern_entries)) + "] = {\n")
+                for second, amount in kern_entries:
+                    fout.write(" { " + str(second) + "," + str(amount) + " },\n")
                 fout.write("};\n\n")
 
             # Output font structure
@@ -99,11 +119,12 @@ class FontSampler:
                     + fontName + "_data, "
                     + str(len(self.m_glyphs)) + ","
                     + fontName + "_glyphs, ")
-            if self.m_kerns:
-                fout.write(str(len(self.m_kerns)) + ","
-                        + fontName + "_kerns, ")
+            if kern_entries:
+                fout.write(fontName + "_glyph_kern_rows, "
+                        + fontName + "_kern_rows, "
+                        + fontName + "_kern_entries, ")
             else:
-                fout.write("0,0,")
+                fout.write("0,0,0,")
 
             # For line spacing, we use font.getsize on a capital letter
             ascent, descent = font.getmetrics()
@@ -270,6 +291,48 @@ class FontSampler:
 
         self.m_kerns = [Kern(first, second, amount)
                         for (first, second), amount in sorted(kerns.items())]
+
+    def buildKernRows(self, font, tt_font):
+        glyph_codes = sorted(self.m_glyphs)
+        if len(glyph_codes) >= 0xffff:
+            raise ValueError("shared kerning supports at most 65534 glyphs")
+
+        glyph_indices = {code: index for index, code in enumerate(glyph_codes)}
+        rows_by_first = {}
+        for kern in self.m_kerns:
+            amount = self.scaleKern(kern.amount, font, tt_font)
+            if not amount:
+                continue
+            if amount < -0x8000 or amount > 0x7fff:
+                raise ValueError("scaled kerning amount does not fit in int16_t")
+            first = glyph_indices[kern.first]
+            second = glyph_indices[kern.second]
+            rows_by_first.setdefault(first, []).append((second, amount))
+
+        glyph_rows = [0xffff] * len(glyph_codes)
+        unique_rows = {}
+        row_values = []
+        for first in sorted(rows_by_first):
+            values = tuple(sorted(rows_by_first[first]))
+            row_index = unique_rows.get(values)
+            if row_index is None:
+                row_index = len(row_values)
+                if row_index >= 0xffff:
+                    raise ValueError("shared kerning supports at most 65535 rows")
+                unique_rows[values] = row_index
+                row_values.append(values)
+            glyph_rows[first] = row_index
+
+        rows = []
+        entries = []
+        for values in row_values:
+            if len(values) > 0xffff:
+                raise ValueError("shared kerning row has more than 65535 entries")
+            rows.append((len(entries), len(values)))
+            entries.extend(values)
+
+        return glyph_rows, rows, entries
+
     def scaleKern(self, kern_amount, font, tt_font):
         # Get the unitsPerEm from the font's head table
         units_per_em = tt_font['head'].unitsPerEm

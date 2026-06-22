@@ -14,7 +14,7 @@ static const pte_glyph pte_glyphs[] = {
 };
 
 static const pte_base_font pte_font = {
-    7, pte_data, 3, pte_glyphs, 0, 0, 9, 7
+    7, pte_data, 3, pte_glyphs, 0, 0, 0, 9, 7
 };
 
 const pte_base_font * get_pte_demo_font(void)

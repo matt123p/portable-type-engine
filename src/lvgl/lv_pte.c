@@ -49,7 +49,8 @@ static bool pte_get_glyph_dsc_cb(const lv_font_t * font, lv_font_glyph_dsc_t * d
                                  uint32_t next);
 static const void * pte_get_glyph_bitmap_cb(lv_font_glyph_dsc_t * dsc, lv_draw_buf_t * draw_buf);
 static const pte_glyph * find_glyph(const pte_base_font * src, uint32_t code);
-static const pte_kern * find_kern(const pte_base_font * src, uint32_t first, uint32_t second);
+static const pte_kern_entry * find_kern(const pte_base_font * src, const pte_glyph * first,
+                                        uint32_t second_code);
 static void measure_glyph(pte_font_dsc_t * dsc, const pte_glyph * glyph);
 static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int32_t x, int32_t y,
                        pte_render_ctx_t * ctx);
@@ -168,27 +169,27 @@ static const pte_glyph * find_glyph(const pte_base_font * src, uint32_t code)
     return NULL;
 }
 
-static const pte_kern * find_kern(const pte_base_font * src, uint32_t first, uint32_t second)
+static const pte_kern_entry * find_kern(const pte_base_font * src, const pte_glyph * first,
+                                        uint32_t second_code)
 {
-    if(src->m_kerns == NULL || src->m_number_kerns == 0) return NULL;
+    if(first == NULL || src->m_glyph_kern_rows == NULL || src->m_kern_rows == NULL ||
+       src->m_kern_entries == NULL) return NULL;
 
-    int32_t low = 0;
-    int32_t high = (int32_t)src->m_number_kerns - 1;
-    int32_t match = -1;
-    while(low <= high) {
-        int32_t mid = low + (high - low) / 2;
-        if(src->m_kerns[mid].first < (int)first) low = mid + 1;
-        else if(src->m_kerns[mid].first > (int)first) high = mid - 1;
-        else {
-            match = mid;
-            high = mid - 1;
-        }
-    }
+    const pte_glyph * second = find_glyph(src, second_code);
+    if(second == NULL) return NULL;
+    uint16_t row_index = src->m_glyph_kern_rows[first - src->m_gylphs];
+    if(row_index == PTE_NO_KERN_ROW) return NULL;
 
-    if(match < 0) return NULL;
-    for(uint32_t i = (uint32_t)match; i < (uint32_t)src->m_number_kerns &&
-        src->m_kerns[i].first == (int)first; i++) {
-        if(src->m_kerns[i].second == (int)second) return &src->m_kerns[i];
+    const pte_kern_row * row = &src->m_kern_rows[row_index];
+    uint32_t second_index = (uint32_t)(second - src->m_gylphs);
+    uint32_t low = row->offset;
+    uint32_t high = row->offset + row->count;
+    while(low < high) {
+        uint32_t mid = low + (high - low) / 2;
+        const pte_kern_entry * entry = &src->m_kern_entries[mid];
+        if(entry->second_glyph == second_index) return entry;
+        if(entry->second_glyph < second_index) low = mid + 1;
+        else high = mid;
     }
     return NULL;
 }
@@ -209,7 +210,8 @@ static void blend_pixel(pte_render_ctx_t * ctx, int32_t x, int32_t y, int32_t al
     *pixel = LV_MIN(alpha, 255);
 }
 
-static void blt_horz_cmprs_resize(const uint8_t ** ptr, int32_t * col, int32_t * pixels_to_go,
+static void blt_horz_cmprs_resize(const uint8_t ** ptr, bool * high_nibble, int32_t * col,
+                                  int32_t * pixels_to_go, bool * switch_col,
                                   int32_t src_width, int32_t dst_x, int32_t dst_y, int32_t ra, int32_t rb,
                                   int32_t sub_offset_x, int32_t lines, int32_t overspill, pte_render_ctx_t * ctx)
 {
@@ -226,9 +228,15 @@ static void blt_horz_cmprs_resize(const uint8_t ** ptr, int32_t * col, int32_t *
     while(count > 0) {
         if(x >= 0 && x < src_width) {
             while(*pixels_to_go == 0) {
-                if(!*col) ++(*ptr);
-                *col = !*col;
-                *pixels_to_go = *col ? (**ptr >> 4) : (**ptr & 0x0f);
+                if(*switch_col) {
+                    *col = !*col;
+                    *switch_col = false;
+                }
+                int32_t run = *high_nibble ? (**ptr >> 4) : (**ptr & 0x0f);
+                if(!*high_nibble) ++(*ptr);
+                *high_nibble = !*high_nibble;
+                *pixels_to_go = run;
+                *switch_col = run < 15;
             }
             if(*col) ++line_acc[p];
             --(*pixels_to_go);
@@ -267,8 +275,10 @@ static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int3
     const int32_t ra = dsc->size;
     const int32_t rb = dsc->src->m_size;
     int32_t acc = rb;
-    int32_t col = 1;
+    bool high_nibble = true;
+    int32_t col = 0;
     int32_t pixels_to_go = 0;
+    bool switch_col = false;
     int32_t cy = 0;
     int32_t last_cy = 0;
     bool finished = false;
@@ -300,8 +310,9 @@ static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int3
             }
 
             if(lines > 0) {
-                blt_horz_cmprs_resize(&ptr, &col, &pixels_to_go, glyph->width, offset_x, offset_y, ra, rb,
-                                      sub_offset_x, lines, overspill, ctx);
+                blt_horz_cmprs_resize(&ptr, &high_nibble, &col, &pixels_to_go, &switch_col,
+                                      glyph->width, offset_x, offset_y, ra, rb, sub_offset_x, lines,
+                                      overspill, ctx);
             }
             offset_y++;
             last_cy = cy;
@@ -355,7 +366,8 @@ static bool pte_get_glyph_dsc_cb(const lv_font_t * font, lv_font_glyph_dsc_t * o
 
     measure_glyph(dsc, glyph);
     int32_t advance = scale_value(dsc, glyph->xadvance);
-    const pte_kern * kern = font->kerning == LV_FONT_KERNING_NORMAL ? find_kern(dsc->src, letter, next) : NULL;
+    const pte_kern_entry * kern = font->kerning == LV_FONT_KERNING_NORMAL ?
+                                  find_kern(dsc->src, glyph, next) : NULL;
     if(kern != NULL) advance += scale_value(dsc, kern->amount);
 
     out->adv_w = (uint16_t)LV_MAX(advance, 0);

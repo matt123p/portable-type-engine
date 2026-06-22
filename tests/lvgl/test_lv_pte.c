@@ -9,9 +9,11 @@ static const pte_glyph glyphs[] = {
     {'A', 2, 1, 0, 0, 3, 0},
     {'V', 2, 1, 0, 0, 3, 1},
 };
-static const pte_kern kerns[] = {{'A', 'V', -1}};
+static const uint16_t glyph_kern_rows[] = {0, PTE_NO_KERN_ROW};
+static const pte_kern_row kern_rows[] = {{0, 1}};
+static const pte_kern_entry kern_entries[] = {{1, -1}};
 static const pte_base_font source = {
-    1, data, 2, glyphs, 1, kerns, 2, 1
+    1, data, 2, glyphs, glyph_kern_rows, kern_rows, kern_entries, 2, 1
 };
 
 int main(void)

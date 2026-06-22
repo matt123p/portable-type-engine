@@ -84,86 +84,44 @@ static const pte_glyph* findChar(int c, const pte_base_font* f)
 	return NULL;
 }
 
-static int searchKern(int c, const pte_base_font* f)
+static const pte_kern_entry* findKern(int first_glyph, int second_glyph, const pte_base_font* f)
 {
-	// Do a binary search to find the character
-	int l = 0;
-	int h = f->m_number_kerns - 1;
+	const pte_kern_row* row;
+	uint32_t low;
+	uint32_t high;
+	uint16_t row_index;
 
-	if (!f->m_kerns || f->m_number_kerns == 0)
+	if (first_glyph < 0 || second_glyph < 0
+		|| first_glyph >= f->m_number_glyphs || second_glyph >= f->m_number_glyphs
+		|| !f->m_glyph_kern_rows || !f->m_kern_rows || !f->m_kern_entries)
 	{
-		return -1;
+		return NULL;
 	}
 
-	// Is it a top or bottom code?
-	if (c == f->m_kerns[l].first)
+	row_index = f->m_glyph_kern_rows[first_glyph];
+	if (row_index == PTE_NO_KERN_ROW)
 	{
-		return l;
-	}
-	if (c == f->m_kerns[h].first)
-	{
-		return h;
+		return NULL;
 	}
 
-	// Is it outside of this array?
-	if (c < f->m_kerns[l].first)
+	row = &f->m_kern_rows[row_index];
+	low = row->offset;
+	high = row->offset + row->count;
+	while (low < high)
 	{
-		// We don't have the character
-		return -1;
-	}
-	if (c > f->m_kerns[h].first)
-	{
-		// We don't have the character
-		return -1;
-	}
-
-	while (h - l > 1)
-	{
-		// Find a the mid-point
-		int m = (h - l) / 2 + l;
-
-		// Do we have it?
-		if (c == f->m_kerns[m].first)
+		uint32_t mid = low + (high - low) / 2;
+		const pte_kern_entry* entry = &f->m_kern_entries[mid];
+		if (entry->second_glyph == (uint16_t)second_glyph)
 		{
-			return m;
+			return entry;
 		}
-
-		// Ok, higher or lower?
-		if (c < f->m_kerns[m].first)
+		if (entry->second_glyph < (uint16_t)second_glyph)
 		{
-			// Lower
-			h = m;
+			low = mid + 1;
 		}
 		else
 		{
-			// Higher
-			l = m;
-		}
-	}
-
-	// Not found!
-	return -1;
-}
-
-static const pte_kern* findKern(int c1, int c2, const pte_base_font* f)
-{
-	// Find the first kern of this type in the array
-	int mid_p = searchKern(c1, f);
-
-	// Now scan up/down to see if we have the pair
-	int d;
-	for (d = -1; d <= 1; d += 2)
-	{
-		int p = mid_p;
-		while (p != -1
-			&& p != f->m_number_kerns
-			&& f->m_kerns[p].first == c1)
-		{
-			if (f->m_kerns[p].second == c2)
-			{
-				return &(f->m_kerns[p]);
-			}
-			p += d;
+			high = mid;
 		}
 	}
 
@@ -332,7 +290,7 @@ static int nextChar(const char* text, size_t available, int* bytes)
 // Draw text on the canvas
 int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size, int c)
 {
-	int last_char = -1;
+	int last_glyph = -1;
 	size_t i;
 	const pte_base_font* bf = f->m_font;
 
@@ -376,7 +334,8 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 		if (g)
 		{
 			// Bitblt this character across
-			const pte_kern* k;
+			const pte_kern_entry* k;
+			int glyph_index = (int)(g - bf->m_gylphs);
 
 			int acc = 0;
 			int high_nibble = 1;
@@ -396,7 +355,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			int sub_offset_dx;
 			int sub_offset_dy;
 
-			k = findKern(last_char, character, bf);
+			k = findKern(last_glyph, glyph_index, bf);
 			if (k)
 			{
 				x += k->amount * pixel_xinc;
@@ -520,7 +479,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 				break;
 			}
 
-			last_char = character;
+			last_glyph = glyph_index;
 		}
 	}
 
@@ -530,7 +489,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 // How big will the text be?
 void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* dy)
 {
-	int last_char = -1;
+	int last_glyph = -1;
 	size_t i;
 	const pte_base_font* bf = f->m_font;
 	*dx = 0;
@@ -543,8 +502,9 @@ void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* d
 		i += bytes;
 		if (g)
 		{
-			const pte_kern* k;
-			k = findKern(last_char, character, bf);
+			const pte_kern_entry* k;
+			int glyph_index = (int)(g - bf->m_gylphs);
+			k = findKern(last_glyph, glyph_index, bf);
 			if (k)
 			{
 				*dx += g->xadvance + k->amount;
@@ -554,7 +514,7 @@ void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* d
 				*dx += g->xadvance;
 			}
 
-			last_char = character;
+			last_glyph = glyph_index;
 		}
 	}
 

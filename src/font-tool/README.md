@@ -13,6 +13,10 @@ legacy `kern` tables and GPOS pair positioning (including class-based kerning)
 are supported. The runtime allocates its scanline accumulator to fit each glyph,
 so source glyph widths are not limited to 128 pixels.
 
+Kerning pairs use 16-bit glyph indices. First glyphs with identical kerning
+rows share one sorted row, reducing storage while retaining binary lookup for
+the second glyph. Adjustments that round to zero at the sampled size are omitted.
+
 Bitmap runs are stored as sequential four-bit tokens. Values from 0 through 14
 end a run and switch between background and foreground; 15 continues the same
 colour for another 15 pixels. Each glyph starts on a byte boundary with a
