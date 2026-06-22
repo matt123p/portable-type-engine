@@ -58,6 +58,12 @@ sampled at 128 pixels, so the declarations above create:
 - `ui_bold_6` through `ui_bold_96`
 - `ui_icons_6` through `ui_icons_96`
 
+These IDs are available to ESPHome during configuration validation, but the
+component emits C++ font objects only for IDs that are actually referenced.
+References from LVGL properties, styles, default fonts, and `id(...)` inside
+lambdas are detected. Unused sizes consume no font-object RAM or descriptor
+allocation in the firmware.
+
 Place the `pte_font:` block before the `lvgl:` block in the YAML file or merged
 package order. ESPHome currently validates custom font providers in load order;
 placing `lvgl:` first can produce `This option requires component font` when it
@@ -79,7 +85,7 @@ lvgl:
             text_font: ui_font_14
 ```
 
-Each generated ID has a lightweight LVGL font object. All sizes of the same
+Each used ID has a lightweight LVGL font object. All used sizes of the same
 face share its bundled glyph data in flash.
 
 ## Requirements

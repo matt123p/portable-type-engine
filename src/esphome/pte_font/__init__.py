@@ -5,6 +5,7 @@ from pathlib import Path
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import font
+from esphome.config import iter_ids
 from esphome.const import CONF_FILE, CONF_FONT, CONF_ID, CONF_SOURCE
 from esphome.core import CORE
 from esphome.core.config import add_includes
@@ -116,6 +117,19 @@ CONFIG_SCHEMA = cv.All(
 
 
 async def to_code(config):
+    referenced_ids = {
+        id_.id
+        for id_, _ in iter_ids(CORE.config)
+        if not id_.is_declaration
+    }
+    used_sizes = {
+        size: size_id
+        for size, size_id in config[CONF_SIZE_IDS].items()
+        if size_id.id in referenced_ids
+    }
+    if not used_sizes:
+        return
+
     cg.add_define("USE_FONT")
     cg.add_build_flag("-Isrc/esphome/components/pte_font")
     # USE_FONT makes LVGL's compatibility overloads include font/font.h even
@@ -141,7 +155,7 @@ async def to_code(config):
     else:
         source = _FONT_REGISTRY[config[CONF_FONT]]["source"]
 
-    for size, size_id in config[CONF_SIZE_IDS].items():
+    for size, size_id in used_sizes.items():
         cg.new_Pvariable(
             size_id, cg.RawExpression(f"{source}()"), size
         )
