@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "name": "pte_font",
+  "description": "Portable Type Engine fonts for ESPHome LVGL",
+  "component_path": "src/esphome",
+  "component": "pte_font",
+  "dependencies": ["lvgl"],
+  "lvgl_version": ">=9.4.0",
+  "tested_esphome_version": "2026.7.0-dev",
+  "font_id_contract": "ESPHome LVGL text_font",
+  "bundled_fonts": "pte_font/fonts.json",
+  "configuration": {
+    "multi_conf": true,
+    "required": ["id", "size"],
+    "bundled_font_key": "font",
+    "custom_font_keys": ["file", "source"]
+  }
+}

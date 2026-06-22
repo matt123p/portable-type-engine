@@ -49,6 +49,17 @@ int main(void)
     assert(font->line_height == 6);
     assert(font->base_line == 3);
     lv_pte_destroy(font);
+
+    lv_font_t in_place;
+    memset(&in_place, 0xa5, sizeof(in_place));
+    assert(lv_pte_init(&in_place, &source, 4));
+    assert(in_place.line_height == 8);
+    assert(in_place.base_line == 4);
+    assert(lv_font_get_glyph_dsc(&in_place, &dsc, 'A', 0));
+    lv_pte_deinit(&in_place);
+    assert(in_place.dsc == NULL);
+    assert(in_place.get_glyph_dsc == NULL);
+
     lv_deinit();
     return 0;
 }

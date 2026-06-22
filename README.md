@@ -18,7 +18,8 @@ lower-power CPU such as an ESP32 or a small ARM processor.
 It provides runtime-scalable `lv_font_t` fonts without modifying or patching
 LVGL, and supports the Arduino IDE, PlatformIO, and CMake. One compact generated
 font can be rendered at multiple sizes or resized while the application runs.
-See the [LVGL add-on guide](docs/lvgl.md) and [examples](examples/README.md).
+See the [LVGL add-on guide](docs/lvgl.md), the [ESPHome and LVGL
+guide](docs/esphome.md), and the [examples](examples/README.md).
 
 <img src="images/Full%20UI%20example.png" width="475"
      alt="Example embedded display interface rendered with Portable Type Engine">
@@ -36,6 +37,33 @@ See the [LVGL add-on guide](docs/lvgl.md) and [examples](examples/README.md).
 - **Extremely low RAM footprint:** font data remains in compact, read-only
   storage, with typical engine working memory around 0.5 KiB for the bundled
   Roboto font. See [RAM usage](#ram-usage) for the full breakdown and comparison.
+
+### ESPHome
+
+PTE includes an ESPHome external component that exposes runtime-scalable fonts
+as ordinary IDs accepted by LVGL's `text_font` option. It bundles regular,
+bold, italic, and bold-italic Roboto plus Material Icons, so the normal setup is
+YAML-only:
+
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/matt123p/portable-type-engine.git
+      ref: main
+      path: src/esphome
+    components: [pte_font]
+
+pte_font:
+  - id: ui_font_24
+    font: roboto_regular
+    size: 24
+```
+
+Python, Pillow, FontTools, and local TTF/OTF files are required only when
+building a custom font; they are not needed for the bundled fonts. See the
+[ESPHome and LVGL guide](docs/esphome.md) for configuration, bundled font names,
+and optional custom-font generation.
 
 ## Features
 
@@ -146,6 +174,7 @@ y += f.m_line_height;
 - [C API reference](src/pte/README.md)
 - [Font conversion tool guide](src/font-tool/README.md)
 - [LVGL add-on guide](docs/lvgl.md)
+- [ESPHome and LVGL guide](docs/esphome.md)
 
 ## LVGL 9 add-on
 

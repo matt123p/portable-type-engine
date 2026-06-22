@@ -7,7 +7,7 @@
 #define LV_PTE_H
 
 #include <lvgl.h>
-#include "../pte/pte.h"
+#include "pte.h"
 
 #ifdef __cplusplus
 extern "C" {
