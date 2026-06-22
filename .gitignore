@@ -34,6 +34,8 @@ _ReSharper*/
 packages/
 *.bmp
 *.ttf
+!src/font-tool/Roboto-Italic-VariableFont_wdth,wght.ttf
+!src/font-tool/MaterialIcons-Regular.ttf
 /src/font-tool/output_font.c
 /src/font-tool/__pycache__/*
 /.pio/

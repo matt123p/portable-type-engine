@@ -58,6 +58,11 @@ python fontsampler.py --font <font-file-path> --output <output-file> [options]
 -   `--output <output-file>`: Required path to the output C file.
 -   [--range <start-end,...>]: (Optional) Add Unicode ranges using decimal or `0x` values. The option can be repeated.
 -   [--symbols <symbols>]: (Optional) Add individual Unicode symbols.
+-   [--all]: (Optional) Include every Unicode code point mapped by the font.
+-   [--axis <TAG=VALUE>]: (Optional) Set a variable-font axis such as
+    `wght=700`. This option may be repeated.
+-   [--name <C_NAME>]: (Optional) Override the generated C symbol and getter
+    name so several styles from one font family can be linked together.
 
 ### Examples
 
@@ -66,6 +71,19 @@ python fontsampler.py --font <font-file-path> --output <output-file> [options]
 ```sh
 python fontsampler.py --font C:\path\to\yourfont.ttf --output myfont.c
 ```
+
+**Variable Font:**
+
+```sh
+python fontsampler.py --font Roboto-Variable.ttf --output roboto_bold.c --axis wght=700 --name Roboto_Bold
+```
+
+**Complete Icon Font:**
+
+```sh
+python fontsampler.py --font MaterialIcons-Regular.ttf --output material_icons.c --all --name Material_Icons
+```
+
 **Selecting Unicode Characters:**
 
 Ranges and individual symbols can be combined. Overlapping selections are

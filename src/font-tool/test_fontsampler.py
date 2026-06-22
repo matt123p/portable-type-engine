@@ -199,6 +199,25 @@ class FontSamplerTests(unittest.TestCase):
 
         self.assertEqual([ord(character) for character in selected], [8364, 10003])
 
+    def test_all_glyphs_uses_the_font_cmap(self):
+        sampler = fontsampler.FontSampler([], all_glyphs=True)
+        selected = []
+        sampler.convertGlyph = lambda font, character: selected.append(character)
+        sampler.calcAllKerns = lambda tt_font: None
+        sampled_font = NS(
+            size=128,
+            getname=lambda: ("Icon Font", "Regular"),
+            getmetrics=lambda: (100, 20),
+        )
+        tt_font = FakeFont({0x41: "A", 0xe000: "icon"},
+                           head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            sampler.convertFont(sampled_font, tt_font,
+                                Path(directory) / "font.c")
+
+        self.assertEqual([ord(character) for character in selected], [0x41, 0xe000])
+
     def test_invalid_range_is_rejected(self):
         with contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
@@ -219,6 +238,25 @@ class FontSamplerTests(unittest.TestCase):
 
         self.assertEqual(args.font_file, "font.ttf")
         self.assertEqual(args.output_file, "generated.c")
+
+    def test_all_axis_and_name_options(self):
+        args = fontsampler.create_argument_parser().parse_args([
+            "--font", "font.ttf", "--output", "generated.c", "--all",
+            "--axis", "wght=700", "--axis", "wdth=100",
+            "--name", "Roboto_Bold",
+        ])
+
+        self.assertTrue(args.all_glyphs)
+        self.assertEqual(args.axis, [("wght", 700.0), ("wdth", 100.0)])
+        self.assertEqual(args.font_name, "Roboto_Bold")
+
+    def test_invalid_c_name_is_rejected(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                fontsampler.create_argument_parser().parse_args([
+                    "--font", "font.ttf", "--output", "generated.c",
+                    "--name", "Roboto-Bold",
+                ])
 
     def test_output_is_required(self):
         with contextlib.redirect_stderr(io.StringIO()):

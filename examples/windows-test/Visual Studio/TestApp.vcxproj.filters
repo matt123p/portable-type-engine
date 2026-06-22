@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\roboto128.c">
+    <ClCompile Include="..\..\fonts\roboto_regular.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\test.cpp">

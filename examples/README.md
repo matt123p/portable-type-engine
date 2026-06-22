@@ -23,6 +23,9 @@ style change to LVGL so the label is measured and rendered again.
 
 ## Using your own font
 
+Ready-generated Roboto regular, bold, italic, bold italic, and complete
+Material Icons sources are available in [`fonts`](fonts/README.md).
+
 Convert a TTF or OTF font using the tool in [`src/font-tool`](../src/font-tool/README.md),
 add the generated C file to your sketch or project, and replace
 `get_pte_demo_font()` with the generated font function:

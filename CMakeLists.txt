@@ -9,7 +9,7 @@ option(PTE_BUILD_WINDOWS_TEST "Build the BMP-producing Windows example" OFF)
 if(PTE_BUILD_WINDOWS_TEST)
     add_executable(pte_windows_test
         examples/windows-test/test.cpp
-        examples/windows-test/roboto128.c
+        examples/fonts/roboto_regular.c
     )
     target_link_libraries(pte_windows_test PRIVATE pte)
 endif()
