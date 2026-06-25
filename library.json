@@ -1,6 +1,6 @@
 {
   "name": "PortableTypeEngine",
-  "version": "2.1.0",
+  "version": "2.0.0",
   "description": "Compact runtime-scalable fonts with an LVGL 9 adapter",
   "keywords": ["font", "lvgl", "display", "embedded", "unicode"],
   "repository": {
