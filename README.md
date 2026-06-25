@@ -1,6 +1,6 @@
-# Portable Type Engine v2.00
+# Portable Type Engine v2.0.0
 
-Release v2.00 23 March 2025
+Release v2.0.0 - 25 June 2025
 
 Please visit the main project's home page here: 
     [GitHub](https://github.com/matt123p/portable-type-engine)
