@@ -65,6 +65,18 @@ lvgl:
         text_font: ui_font_24
 ```
 
+Custom fonts can be generated automatically from TTF/OTF files:
+
+```yaml
+pte_font:
+  - id: ui_custom
+    font_file: fonts/MyFont.ttf
+    ranges:
+      - "0x20-0x7e"    # ASCII printable
+      - "0xa0-0xff"    # Latin-1 supplement
+    symbols: "€£→✓"    # Additional symbols
+```
+
 One `pte_font` entry automatically creates suffixed IDs from size 6 through
 75% of the generated font's sample size. The bundled 128-pixel fonts therefore
 provide `ui_font_6` through `ui_font_96`. Only IDs referenced by the validated
@@ -75,7 +87,7 @@ compiled only when at least one ID from that face is used.
 Python, Pillow, FontTools, and local TTF/OTF files are required only when
 building a custom font; they are not needed for the bundled fonts. See the
 [ESPHome and LVGL guide](docs/esphome.md) for configuration, bundled font names,
-and optional custom-font generation.
+and automatic or manual custom-font generation.
 
 ## Features
 

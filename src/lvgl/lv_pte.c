@@ -302,10 +302,21 @@ static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int3
 
     x = (x * rb) / ra;
     y = (y * rb) / ra;
-    int32_t offset_x = ((x + glyph->xoffset) * ra) / rb;
-    int32_t sub_offset_x = ((x + glyph->xoffset) * ra) % rb;
-    int32_t offset_y = ((y - glyph->yoffset) * ra) / rb;
-    int32_t sub_offset_y = rb - ((y - glyph->yoffset) * ra) % rb - 1;
+    int32_t val_x = (x + glyph->xoffset) * ra;
+    int32_t offset_x = val_x / rb;
+    int32_t sub_offset_x = val_x % rb;
+    if (sub_offset_x < 0) {
+        offset_x--;
+        sub_offset_x += rb;
+    }
+    int32_t val_y = (y - glyph->yoffset) * ra;
+    int32_t offset_y = val_y / rb;
+    int32_t mod_y = val_y % rb;
+    if (mod_y < 0) {
+        offset_y--;
+        mod_y += rb;
+    }
+    int32_t sub_offset_y = rb - mod_y - 1;
     if(sub_offset_y) --offset_y;
 
     while(!finished) {

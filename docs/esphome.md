@@ -10,7 +10,7 @@ files are not required unless you want to build a custom font.**
 
 ## External component
 
-The component is under the repository's `src/esphome` path, so use the expanded
+The component is under the repository's `src` path, so use the expanded
 Git source form:
 
 ```yaml
@@ -111,12 +111,64 @@ Install the optional converter dependencies with:
 python -m pip install Pillow fonttools
 ```
 
-## Custom fonts
+## Automatic font generation
 
-Skip this section when using one of the bundled font names above.
+The component can generate fonts from TTF/OTF files automatically during
+ESPHome configuration validation. This eliminates the need to run the converter
+manually.
 
-To build a custom typeface or icon font, run the converter on the development
-machine. This example includes the ISO 8859-1 graphic characters:
+Specify a `font_file` with optional character selection:
+
+```yaml
+pte_font:
+  - id: ui_custom
+    font_file: fonts/MyFont.ttf
+    ranges:
+      - "0x20-0x7e"    # ASCII printable
+      - "0xa0-0xff"    # Latin-1 supplement
+    symbols: "€£→✓"    # Additional symbols
+```
+
+Available options:
+
+- `font_file`: Path to a TTF/OTF font file (required)
+- `ranges`: List of Unicode ranges like `"0x20-0x7e,0xa0-0xff"` or multiple strings
+- `symbols`: Individual characters to include (e.g., `"€£→✓"`)
+- `all_glyphs`: Include every glyph mapped by the font (for icon fonts)
+- `font_axes`: Variable font axes as a map (e.g., `wght: 700`)
+- `generated_name`: Override the C symbol name (must be a valid C identifier)
+
+The component generates a C file in the `.esphome` build directory and
+creates suffixed IDs starting at size 6. The generated font is sampled at 128
+pixels.
+
+For variable fonts, set axes:
+
+```yaml
+pte_font:
+  - id: ui_bold
+    font_file: fonts/Roboto-Variable.ttf
+    font_axes:
+      wght: 700    # Weight
+    ranges:
+      - "0x20-0x7e"
+```
+
+For icon fonts, include all glyphs:
+
+```yaml
+pte_font:
+  - id: ui_icons
+    font_file: icons/MaterialIcons.ttf
+    all_glyphs: true
+```
+
+## Custom fonts (pre-generated)
+
+Skip this section when using automatic generation above.
+
+To build a custom typeface or icon font manually, run the converter on the
+development machine. This example includes the ISO 8859-1 graphic characters:
 
 ```sh
 python src/font-tool/fontsampler.py \
