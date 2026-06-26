@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(PortableTypeEngine VERSION 2.1.0 LANGUAGES C CXX)
+project(PortableTypeEngine VERSION 2.0.1 LANGUAGES C CXX)
 
 add_library(pte src/pte/pte.c)
 target_include_directories(pte PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
