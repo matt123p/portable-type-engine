@@ -84,6 +84,78 @@ lvgl:
 Each used ID has a lightweight LVGL font object. All used sizes of the same
 face share its bundled glyph data in flash.
 
+## Complete 480x480 LVGL example
+
+The repository includes a full ESPHome example at
+[`examples/esphome/example_480p_simple.yaml`](../examples/esphome/example_480p_simple.yaml).
+It targets an ESP32-S3 board with an ST7701S 480x480 display, uses
+[`background.png`](../examples/esphome/background.png) as the LVGL bottom
+layer, and builds a dashboard from LVGL labels and objects.
+
+The font portion combines bundled text faces with an automatically generated
+icon font:
+
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/matt123p/portable-type-engine.git
+      ref: v2.0.1
+      path: src/esphome
+    components: [pte_font]
+
+pte_font:
+  - id: ui_font
+    font: roboto_regular
+  - id: ui_font_bold
+    font: roboto_bold
+  - id: ui_icon_font
+    font_file: fonts/materialdesignicons-webfont.ttf
+    ranges:
+      - "0xf007e-0xf007e" # battery-50
+      - "0xf0335-0xf0335" # lightbulb
+      - "0xf0405-0xf0405" # outdoor-lamp
+      - "0xf0599-0xf0599" # weather-sunny
+      - "0xf12bd-0xf12bd" # home-floor-1
+      - "0xf12be-0xf12be" # home-floor-2
+```
+
+The Roboto declarations are YAML-only and require no local font files. The icon
+font declaration expects `fonts/materialdesignicons-webfont.ttf` in the
+ESPHome configuration directory, then generates only the listed icon code
+points into the firmware build.
+
+The example uses the generated size-suffixed IDs directly in LVGL widgets:
+
+```yaml
+lvgl:
+  bottom_layer:
+    bg_image_src: wallpaper_day
+    bg_image_opa: COVER
+    bg_opa: COVER
+  pages:
+    - id: page_home
+      widgets:
+        - label:
+            text: "12:45"
+            text_color: 0xffffff
+            text_font: ui_font_46
+        - label:
+            text: "Sunny"
+            text_color: 0xdce7f2
+            text_font: ui_font_15
+        - label:
+            text: "󰖙"
+            text_color: 0xffff00
+            text_font: ui_icon_font_75
+```
+
+Copy both files from `examples/esphome` into an ESPHome configuration, provide
+the Material Design Icons TTF at the configured path, and adjust the board,
+pin, Wi-Fi, and display settings for your hardware. The example pins PTE to
+`v2.0.1`; for development you can change `ref` to `main`, or use a newer
+release tag when one is available.
+
 ## Requirements
 
 For the bundled fonts, the only font-specific requirement is:

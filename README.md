@@ -88,6 +88,13 @@ building a custom font; they are not needed for the bundled fonts. See the
 [ESPHome and LVGL guide](docs/esphome.md) for configuration, bundled font
 names, and automatic or manual custom-font generation.
 
+A complete ESPHome/LVGL dashboard example is included in
+[`examples/esphome/example_480p_simple.yaml`](examples/esphome/example_480p_simple.yaml).
+It shows PTE's bundled Roboto faces, an automatically generated Material Design
+icon font, a 480x480 background image, and LVGL labels that reference multiple
+runtime-generated sizes such as `ui_font_46`, `ui_font_14`, and
+`ui_icon_font_75`.
+
 ## Features
 
 It has the following features:

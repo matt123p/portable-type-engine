@@ -1,0 +1,669 @@
+# ============================================
+# Simple 480x480 Example Screen
+# ============================================
+# A minimal, standalone example of using the
+# portable type engine.
+# ============================================
+
+esphome:
+  name: example-480p-screen
+  friendly_name: "Example 480p Screen"
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    - priority: -100
+      then:
+        - light.turn_on:
+            id: display_backlight
+            brightness: 100%
+
+# --------------------------------------------
+# ESP32 Settings
+# --------------------------------------------
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+# --------------------------------------------
+# WiFi (optional - comment out if not needed)
+# --------------------------------------------
+wifi:
+  ssid: "YourWiFiSSID"
+  password: "YourWiFiPassword"
+  ap:
+    ssid: "Example Screen Fallback"
+    password: "example123"
+
+# --------------------------------------------
+# Logger
+# --------------------------------------------
+logger:
+  hardware_uart: UART0
+
+# --------------------------------------------
+# I2C for touchscreen (removed - not needed)
+# --------------------------------------------
+i2c:
+  - id: bus_a
+    sda: GPIO19
+    scl: GPIO45
+
+# --------------------------------------------
+# SPI for display
+# --------------------------------------------
+spi:
+  - id: lcd_spi
+    clk_pin: GPIO48
+    mosi_pin: GPIO47
+
+# --------------------------------------------
+# Display - ST7701 480x480
+# --------------------------------------------
+display:
+  - platform: st7701s
+    id: st7701_display
+    update_interval: never
+    data_rate: 8MHz
+    spi_mode: MODE3
+    color_order: RGB
+    dimensions:
+      width: 480
+      height: 480
+    invert_colors: false
+    transform:
+      mirror_x: false
+      mirror_y: false
+    cs_pin: 39
+    de_pin: 18
+    hsync_pin: 16
+    vsync_pin: 17
+    pclk_pin: 21
+    init_sequence:
+    - 1
+    - [ 0xff, 0x77, 0x1, 0x0, 0x0, 0x10 ]
+    - [ 0xcd, 0x0 ]
+    hsync_pulse_width: 8
+    hsync_front_porch: 10
+    hsync_back_porch: 50
+    vsync_pulse_width: 8
+    vsync_front_porch: 10
+    vsync_back_porch: 20
+    pclk_frequency: 12MHz
+    pclk_inverted: false
+
+    data_pins:
+      red:
+      - 11
+      - 12
+      - 13
+      - 14
+      - 0
+      green:
+      - 8
+      - 20
+      - 3
+      - 46
+      - 9
+      - 10
+      blue:
+      - 4
+      - 5
+      - 6
+      - 7
+      - 15
+
+# --------------------------------------------
+# Backlight
+# --------------------------------------------
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: backlight
+    frequency: 100Hz
+
+light:
+  - platform: monochromatic
+    output: backlight
+    name: Display Backlight
+    id: display_backlight
+    restore_mode: ALWAYS_ON
+
+# --------------------------------------------
+# Time - for clock updates
+# --------------------------------------------
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: Europe/London
+
+# --------------------------------------------
+# Portable Type Engine Fonts
+# --------------------------------------------
+external_components:
+  - source:
+      type: git
+      url: https://github.com/matt123p/portable-type-engine.git
+      ref: v2.0.1
+      path: src/esphome
+    components: [pte_font]
+
+pte_font:
+  - id: ui_font
+    font: roboto_regular
+  - id: ui_font_bold
+    font: roboto_bold
+  - id: ui_icon_font
+    font_file: fonts/materialdesignicons-webfont.ttf
+    ranges:
+      - "0xf007e-0xf007e" # battery-50
+      - "0xf0335-0xf0335" # lightbulb
+      - "0xf0405-0xf0405" # outdoor-lamp
+      - "0xf0599-0xf0599" # weather-sunny
+      - "0xf12bd-0xf12bd" # home-floor-1
+      - "0xf12be-0xf12be" # home-floor-2
+
+# --------------------------------------------
+# Images
+# --------------------------------------------
+image:
+  rgb565:
+    opaque:
+      - file: background.png
+        id: wallpaper_day
+        resize: 480x480
+
+# --------------------------------------------
+# LVGL - Exact same layout as esp_hall (480x480)
+# --------------------------------------------
+lvgl:
+  id: my_lvgl
+  color_depth: 16
+
+  # Bottom layer - same background as ui.yaml
+  bottom_layer:
+    bg_image_src: wallpaper_day
+    bg_image_opa: COVER
+    bg_opa: COVER
+
+  pages:
+    - id: page_home
+      bg_color: 0x000000
+      bg_opa: TRANSP
+      widgets:
+        # Weather/Time Card - EXACT same layout as common/home.yaml
+        - obj:
+            x: 20
+            y: 16
+            width: 440
+            height: 112
+            radius: 28
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 18%
+            bg_color: 0x0b1826
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              # Clock time
+              - label:
+                  id: lvgl_home_clock
+                  x: 18
+                  y: 14
+                  text_color: 0xffffff
+                  text_font: ui_font_46
+                  text: "12:45"
+              # Date
+              - label:
+                  id: lvgl_home_date
+                  x: 20
+                  y: 66
+                  text_color: 0xd7e5f3
+                  text_font: ui_font_14
+                  text: "Monday 22 April"
+              # Weather icon
+              - label:
+                  id: lvgl_home_weather_icon
+                  x: 178
+                  y: 20
+                  width: 75
+                  text_color: 0xffff00
+                  text_font: ui_icon_font_75
+                  text_align: CENTER
+                  text: "󰖙"
+              # Temperature
+              - label:
+                  id: lvgl_home_weather_temp
+                  x: 246
+                  y: 18
+                  width: 108
+                  text_color: 0xffffff
+                  text_font: ui_font_34
+                  text_align: RIGHT
+                  text: "21.4°C"
+              # Weather description
+              - label:
+                  id: lvgl_home_weather_desc
+                  x: 228
+                  y: 58
+                  width: 126
+                  long_mode: WRAP
+                  text_color: 0xdce7f2
+                  text_font: ui_font_15
+                  text_align: RIGHT
+                  text: "Sunny"
+              # High temp
+              - label:
+                  id: lvgl_home_weather_high
+                  x: 360
+                  y: 28
+                  width: 48
+                  text_color: 0xffd58f
+                  text_font: ui_font_18
+                  text_align: RIGHT
+                  text: "H 24°"
+              # Low temp
+              - label:
+                  id: lvgl_home_weather_low
+                  x: 360
+                  y: 58
+                  width: 48
+                  text_color: 0xaed4ff
+                  text_font: ui_font_18
+                  text_align: RIGHT
+                  text: "L 15°"
+
+        # Calendar Card
+        - obj:
+            id: home_calendar_card
+            x: 20
+            y: 144
+            width: 210
+            height: 100
+            radius: 24
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x14222d
+            bg_opa: 72%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              # Presence indicators
+              - label:
+                  id: lvgl_presence_matt_value
+                  x: 16
+                  y: 16
+                  width: 24
+                  text_color: 0xffd9f1
+                  text_font: ui_font_24
+                  text_align: CENTER
+                  text: "M"
+              - label:
+                  id: lvgl_presence_sj_value
+                  x: 54
+                  y: 16
+                  width: 24
+                  text_color: 0xffd9f1
+                  text_font: ui_font_24
+                  text_align: CENTER
+                  text: "S"
+              - label:
+                  id: lvgl_presence_lexie_value
+                  x: 92
+                  y: 16
+                  width: 24
+                  text_color: 0xffd9f1
+                  text_font: ui_font_24
+                  text_align: CENTER
+                  text: "L"
+              - label:
+                  id: lvgl_presence_fenton_value
+                  x: 130
+                  y: 16
+                  width: 24
+                  text_color: 0xffd9f1
+                  text_font: ui_font_24
+                  text_align: CENTER
+                  text: "F"
+              # Calendar item
+              - label:
+                  id: lvgl_home_calendar_item_1
+                  x: 16
+                  y: 54
+                  width: 176
+                  long_mode: WRAP
+                  text_color: 0xffffff
+                  text_font: ui_font_14
+                  text: "09:00 School Run"
+
+        # Lights Card
+        - obj:
+            x: 250
+            y: 144
+            width: 210
+            height: 100
+            radius: 24
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x233126
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  x: 14
+                  y: 12
+                  text_color: 0xc7f3a8
+                  text_font: ui_font_16
+                  text: "LIGHTS"
+              # Light icons
+              - label:
+                  id: lvgl_home_lights_upstairs_icon
+                  x: 20
+                  y: 42
+                  width: 50
+                  text_color: 0xffd58f
+                  text_font: ui_icon_font_36
+                  text_align: CENTER
+                  text: "󱊽"
+              - label:
+                  id: lvgl_home_lights_downstairs_icon
+                  x: 80
+                  y: 42
+                  width: 50
+                  text_color: 0x6c7680
+                  text_font: ui_icon_font_36
+                  text_align: CENTER
+                  text: "󱊾"
+              - label:
+                  id: lvgl_home_lights_outside_icon
+                  x: 140
+                  y: 42
+                  width: 50
+                  text_color: 0x6c7680
+                  text_font: ui_icon_font_36
+                  text_align: CENTER
+                  text: "󰐅"
+
+        # Heating Card
+        - obj:
+            id: home_heating_slot
+            x: 20
+            y: 260
+            width: 102
+            height: 118
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x233126
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  x: 12
+                  y: 14
+                  text_color: 0xaed4ff
+                  text_font: ui_font_14
+                  text: "HEATING"
+              - label:
+                  id: lvgl_home_climate_icon
+                  x: 70
+                  y: 14
+                  text_color: 0x9fdab7
+                  text_font: ui_icon_font_18
+                  text: ""
+              - label:
+                  id: lvgl_home_indoor_temp
+                  x: 12
+                  y: 48
+                  text_color: 0xffffff
+                  text_font: ui_font_28
+                  text: "20.8°C"
+
+        # EV Card
+        - obj:
+            id: home_ev_slot
+            x: 132
+            y: 260
+            width: 102
+            height: 118
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x203019
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  x: 8
+                  y: 14
+                  width: 86
+                  text_color: 0xc7f3a8
+                  text_font: ui_font_12
+                  text_align: CENTER
+                  text: "EV STATUS"
+              # Charging icon and text
+              - label:
+                  x: 6
+                  y: 38
+                  width: 90
+                  text_color: 0xffd58f
+                  text_font: ui_icon_font_42
+                  text_align: CENTER
+                  text: "󰁾"
+              - label:
+                  x: 12
+                  y: 82
+                  width: 78
+                  text_color: 0xffffff
+                  text_font: ui_font_15
+                  text_align: CENTER
+                  text: "Charging"
+
+        # Battery Card
+        - obj:
+            id: home_battery_slot
+            x: 245
+            y: 260
+            width: 102
+            height: 118
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x233126
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  x: 12
+                  y: 14
+                  text_color: 0xc7f3a8
+                  text_font: ui_font_14
+                  text: "BATTERY"
+              - label:
+                  id: lvgl_home_battery_value
+                  x: 12
+                  y: 40
+                  width: 78
+                  text_color: 0xffffff
+                  text_font: ui_font_24
+                  text: "74%"
+              - label:
+                  id: lvgl_home_solar_power
+                  x: 12
+                  y: 74
+                  width: 78
+                  text_color: 0xdff0d6
+                  text_font: ui_font_12
+                  text: "S 2.4"
+              - label:
+                  id: lvgl_home_house_consumption
+                  x: 12
+                  y: 90
+                  width: 78
+                  text_color: 0xd7e5f3
+                  text_font: ui_font_12
+                  text: "H 0.8"
+
+        # Vacuum Card
+        - obj:
+            id: home_vacuum_slot
+            x: 358
+            y: 260
+            width: 102
+            height: 118
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 16%
+            bg_color: 0x36281c
+            bg_opa: 68%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  x: 12
+                  y: 14
+                  text_color: 0xffd58f
+                  text_font: ui_font_14
+                  text: "VACUUM"
+              - label:
+                  id: lvgl_home_vacuum_value
+                  x: 12
+                  y: 42
+                  width: 78
+                  long_mode: WRAP
+                  text_color: 0xffffff
+                  text_font: ui_font_15
+                  text: "Docked"
+              - label:
+                  x: 12
+                  y: 84
+                  text_color: 0xd7e5f3
+                  text_font: ui_font_9
+                  text: "Last clean"
+              - label:
+                  id: lvgl_home_vacuum_cleaning_time
+                  x: 12
+                  y: 95
+                  width: 78
+                  text_color: 0xffffff
+                  text_font: ui_font_11
+                  text: "Today"
+
+        # Footer - Hall and Landing buttons
+        - obj:
+            id: lvgl_footer_hall_btn
+            x: 20
+            y: 416
+            width: 210
+            height: 48
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 18%
+            bg_color: 0x223546
+            bg_opa: 72%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  id: lvgl_footer_hall_icon
+                  x: 16
+                  y: 13
+                  text_color: 0x6c7680
+                  text_font: ui_icon_font_20
+                  text: "󰌵"
+              - label:
+                  x: 48
+                  y: 13
+                  text_color: 0xffffff
+                  text_font: ui_font_18
+                  text: "Hall"
+              - label:
+                  id: lvgl_footer_hall_state
+                  x: 126
+                  y: 14
+                  width: 62
+                  text_color: 0xd7e5f3
+                  text_font: ui_font_15
+                  text_align: RIGHT
+                  text: "OFF"
+        - obj:
+            id: lvgl_footer_landing_btn
+            x: 250
+            y: 416
+            width: 210
+            height: 48
+            radius: 20
+            border_width: 1
+            border_color: 0xffffff
+            border_opa: 18%
+            bg_color: 0x24402d
+            bg_opa: 72%
+            pad_all: 0
+            scrollbar_mode: "off"
+            widgets:
+              - label:
+                  id: lvgl_footer_landing_icon
+                  x: 16
+                  y: 13
+                  text_color: 0x6c7680
+                  text_font: ui_icon_font_20
+                  text: "󰌵"
+              - label:
+                  x: 48
+                  y: 13
+                  text_color: 0xffffff
+                  text_font: ui_font_18
+                  text: "Landing"
+              - label:
+                  id: lvgl_footer_landing_state
+                  x: 126
+                  y: 14
+                  width: 62
+                  text_color: 0xd7e5f3
+                  text_font: ui_font_15
+                  text_align: RIGHT
+                  text: "OFF"
+
+# --------------------------------------------
+# Interval - Update time every second
+# --------------------------------------------
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          auto now = std::time(nullptr);
+          auto *tm = std::localtime(&now);
+          char time_str[16];
+          std::strftime(time_str, sizeof(time_str), "%H:%M", tm);
+
+          char date_str[48];
+          std::strftime(date_str, sizeof(date_str), "%A %d %B", tm);
+
+          if (lvgl_home_clock != nullptr) {
+            lv_label_set_text(lvgl_home_clock, time_str);
+          }
+          if (lvgl_home_date != nullptr) {
+            lv_label_set_text(lvgl_home_date, date_str);
+          }
