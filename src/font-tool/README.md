@@ -81,7 +81,7 @@ python fontsampler.py --font Roboto-Variable.ttf --output roboto_bold.c --axis w
 **Complete Icon Font:**
 
 ```sh
-python fontsampler.py --font MaterialIcons-Regular.ttf --output material_icons.c --all --name Material_Icons
+python fontsampler.py --font MyIcons.ttf --output my_icons.c --all --name My_Icons
 ```
 
 **Selecting Unicode Characters:**

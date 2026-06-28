@@ -42,8 +42,7 @@ guide](docs/esphome.md), and the [examples](examples/README.md).
 
 PTE includes an ESPHome external component that exposes runtime-scalable fonts
 as ordinary IDs accepted by LVGL's `text_font` option. It bundles regular,
-bold, italic, and bold-italic Roboto plus Material Icons, so the normal setup is
-YAML-only:
+bold, italic, and bold-italic Roboto, so the normal setup is YAML-only:
 
 ```yaml
 external_components:
@@ -86,8 +85,8 @@ compiled only when at least one ID from that face is used.
 
 Python, Pillow, FontTools, and local TTF/OTF files are required only when
 building a custom font; they are not needed for the bundled fonts. See the
-[ESPHome and LVGL guide](docs/esphome.md) for configuration, bundled font names,
-and automatic or manual custom-font generation.
+[ESPHome and LVGL guide](docs/esphome.md) for configuration, bundled font
+names, and automatic or manual custom-font generation.
 
 ## Features
 

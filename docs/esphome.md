@@ -3,7 +3,7 @@
 Portable Type Engine works with stock ESPHome without patching ESPHome or
 replacing its LVGL component. The PTE-owned external component creates ordinary
 ESPHome font IDs, owns the corresponding `lv_font_t` objects, and bundles
-Roboto and Material Icons.
+Roboto.
 
 Using a bundled font is YAML-only. **Python, Pillow, FontTools, and local font
 files are not required unless you want to build a custom font.**
@@ -34,7 +34,6 @@ The available bundled names are:
 - `roboto_bold`
 - `roboto_italic`
 - `roboto_bold_italic`
-- `material_icons`
 
 Declare each face once and give it a base ESPHome ID:
 
@@ -45,9 +44,6 @@ pte_font:
 
   - id: ui_bold
     font: roboto_bold
-
-  - id: ui_icons
-    font: material_icons
 ```
 
 The component creates suffixed IDs for every integer size from 6 through 75%
@@ -56,7 +52,6 @@ sampled at 128 pixels, so the declarations above create:
 
 - `ui_font_6` through `ui_font_96`
 - `ui_bold_6` through `ui_bold_96`
-- `ui_icons_6` through `ui_icons_96`
 
 These IDs are available to ESPHome during configuration validation, but the
 component emits C++ font objects only for IDs that are actually referenced.
@@ -159,7 +154,7 @@ For icon fonts, include all glyphs:
 ```yaml
 pte_font:
   - id: ui_icons
-    font_file: icons/MaterialIcons.ttf
+    font_file: icons/MyIcons.ttf
     all_glyphs: true
 ```
 

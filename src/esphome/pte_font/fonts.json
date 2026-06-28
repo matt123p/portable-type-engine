@@ -28,13 +28,6 @@
       "source_size": 128,
       "family": "Roboto",
       "style": "Bold Italic"
-    },
-    "material_icons": {
-      "file": "material_icons.c",
-      "source": "get_Material_Icons",
-      "source_size": 128,
-      "family": "Material Icons",
-      "style": "Regular"
     }
   }
 }
