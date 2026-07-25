@@ -25,10 +25,13 @@ glyph index. Row boundaries and pair entries are packed into 16 bits. Tables
 whose actual kerning references exceed these limits retain the wide legacy
 format.
 
-Bitmap runs are stored as sequential four-bit tokens. Values from 0 through 14
-end a run and switch between background and foreground; 15 continues the same
-colour for another 15 pixels. Each glyph starts on a byte boundary with a
-background run.
+Each glyph bitmap starts with one repeat-previous bit per source scanline,
+padded to a byte boundary. Repeated rows have no pixel payload; all other rows
+remain one continuous stream, so runs are not reset at scanline boundaries.
+The stream stores alternating background and foreground run lengths using a
+fixed Golomb-Rice code with `k=4`: a unary quotient followed by a four-bit
+remainder. Each glyph and its first run start on a byte boundary; the first run
+is background and may have length zero.
 
 ## Installation
 
