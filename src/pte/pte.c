@@ -175,9 +175,109 @@ static int findKern(int first_glyph, int second_glyph, const pte_base_font* f)
 	return 0;
 }
 
+typedef struct
+{
+	const unsigned char* ptr;
+	unsigned char bit_mask;
+	int col;
+	int pixels_to_go;
+	int switch_col;
+} pte_rice_state;
+
+typedef struct
+{
+	const unsigned char* repeat_rows;
+	int row;
+	pte_rice_state rice;
+	pte_rice_state previous_row;
+} pte_bitmap_decoder;
+
+static int riceReadBit(pte_rice_state* state)
+{
+	int bit = (*state->ptr & state->bit_mask) != 0;
+	state->bit_mask >>= 1;
+	if (state->bit_mask == 0)
+	{
+		state->bit_mask = 0x80;
+		++state->ptr;
+	}
+	return bit;
+}
+
+static int riceReadRun(pte_rice_state* state)
+{
+	int quotient = 0;
+	int remainder = 0;
+	int i;
+	while (!riceReadBit(state))
+	{
+		++quotient;
+	}
+	for (i = 0; i < 4; ++i)
+	{
+		remainder = (remainder << 1) | riceReadBit(state);
+	}
+	return quotient * 16 + remainder;
+}
+
+static int riceReadPixel(pte_rice_state* state)
+{
+	while (state->pixels_to_go == 0)
+	{
+		if (state->switch_col)
+		{
+			state->col = !state->col;
+		}
+		state->pixels_to_go = riceReadRun(state);
+		state->switch_col = 1;
+	}
+	--state->pixels_to_go;
+	return state->col;
+}
+
+static void bitmapDecoderInit(pte_bitmap_decoder* decoder, const pte_base_font* font,
+	const pte_glyph* glyph)
+{
+	const unsigned char* data = font->m_data + glyph->ptr;
+	decoder->row = 0;
+	decoder->repeat_rows = data;
+
+	decoder->rice.ptr = data + ((glyph->height + 7) / 8);
+	decoder->rice.bit_mask = 0x80;
+	decoder->rice.col = 0;
+	decoder->rice.pixels_to_go = 0;
+	decoder->rice.switch_col = 0;
+	decoder->previous_row = decoder->rice;
+}
+
+static int bitmapDecoderBeginRow(pte_bitmap_decoder* decoder, pte_rice_state* row_state)
+{
+	int repeated = (decoder->repeat_rows[decoder->row >> 3]
+		& (0x80 >> (decoder->row & 7))) != 0;
+	if (repeated)
+	{
+		*row_state = decoder->previous_row;
+	}
+	else
+	{
+		decoder->previous_row = decoder->rice;
+		*row_state = decoder->rice;
+	}
+	return repeated;
+}
+
+static void bitmapDecoderEndRow(pte_bitmap_decoder* decoder,
+	const pte_rice_state* row_state, int repeated)
+{
+	if (!repeated)
+	{
+		decoder->rice = *row_state;
+	}
+	++decoder->row;
+}
+
 // Bitblt a horizontal line from a compressed source
-static void blt_horz_cmprs_resize(const unsigned char** ptr, int* high_nibble, int* col,
-	int* pixels_to_go, int* switch_col, int src_width,
+static void blt_horz_cmprs_resize(pte_bitmap_decoder* decoder, int src_width,
 	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
 	int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
 {
@@ -189,46 +289,25 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* high_nibble, i
 	int p = 0;
 	int count = lines;
 	int div = 0;
+	pte_rice_state row_state;
+	int repeated;
 
 	if (!line_acc)
 	{
 		return;
 	}
+	repeated = bitmapDecoderBeginRow(decoder, &row_state);
 
 	// Accumulate a horizontal line of data
 	while (count > 0)
 	{
 		if (x >= 0 && x < src_width)
 		{
-			// Decode the compressed font data
-			while (*pixels_to_go == 0)
-			{
-				int run;
-				if (*switch_col)
-				{
-					*col = !*col;
-					*switch_col = 0;
-				}
-				if (*high_nibble)
-				{
-					run = (**ptr) >> 4;
-				}
-				else
-				{
-					run = (**ptr) & 0xf;
-					++(*ptr);
-				}
-				*high_nibble = !*high_nibble;
-				*pixels_to_go = run;
-				*switch_col = run < 15;
-			}
-
-			if (*col)
+			int pixel = riceReadPixel(&row_state);
+			if (pixel)
 			{
 				++line_acc[p];
 			}
-
-			-- (*pixels_to_go);
 		}
 		div += (lines + overspill);
 
@@ -257,12 +336,17 @@ static void blt_horz_cmprs_resize(const unsigned char** ptr, int* high_nibble, i
 			if (x >= src_width)
 			{
 				// Move to the next line
+				bitmapDecoderEndRow(decoder, &row_state, repeated);
 				--count;
 
 				// Reset for the next line
 				p = 0;
 				x = x_start;
 				c = rb;
+				if (count > 0)
+				{
+					repeated = bitmapDecoderBeginRow(decoder, &row_state);
+				}
 			}
 			else
 			{
@@ -385,14 +469,10 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			int glyph_index = (int)(g - bf->m_gylphs);
 
 			int acc = 0;
-			int high_nibble = 1;
-			int col = 0;
-			int pixels_to_go = 0;
-			int switch_col = 0;
+			pte_bitmap_decoder decoder;
 			int cy = 0;
 			int last_cy = 0;
 			int finished = 0;
-			const unsigned char* ptr = bf->m_data + g->ptr;
 			int offset_x;
 			int sub_offset_x;
 			int offset_y;
@@ -402,6 +482,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			int sub_offset_dx;
 			int sub_offset_dy;
 
+			bitmapDecoderInit(&decoder, bf, g);
 			kern = findKern(last_glyph, glyph_index, bf);
 			x += kern * pixel_xinc;
 			y += kern * pixel_yinc;
@@ -493,8 +574,8 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 
 					if (lines > 0)
 					{
-						blt_horz_cmprs_resize(&ptr, &high_nibble, &col, &pixels_to_go, &switch_col,
-							g->width, offset_x, offset_y, pixel_xinc, pixel_yinc,
+						blt_horz_cmprs_resize(&decoder, g->width,
+							offset_x, offset_y, pixel_xinc, pixel_yinc,
 							f->m_ra, f->m_rb, sub_offset_dx, lines, overspill, c);
 					}
 					offset_x += line_xinc;

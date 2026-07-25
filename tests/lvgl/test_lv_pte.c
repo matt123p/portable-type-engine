@@ -7,10 +7,13 @@
 
 #include <lv_pte.h>
 
-static const unsigned char data[] = {0x02, 0x02};
+static const unsigned char data[] = {
+    0x40, 0x84, 0x80,
+    0x40, 0x84, 0x80,
+};
 static const pte_glyph glyphs[] = {
-    {'A', 2, 1, 0, 0, 3, 0},
-    {'V', 2, 1, 0, 0, 3, 1},
+    {'A', 2, 2, 0, 0, 3, 0},
+    {'V', 2, 2, 0, 0, 3, 3},
 };
 static const uint8_t glyph_kern_rows[] = {0, PTE_NO_COMPACT_KERN_ROW};
 static const uint16_t kern_rows[] = {0, 2};

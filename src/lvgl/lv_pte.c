@@ -256,8 +256,91 @@ static void blend_pixel(pte_render_ctx_t * ctx, int32_t x, int32_t y, int32_t al
     *pixel = LV_MIN(alpha, 255);
 }
 
-static void blt_horz_cmprs_resize(const uint8_t ** ptr, bool * high_nibble, int32_t * col,
-                                  int32_t * pixels_to_go, bool * switch_col,
+typedef struct {
+    const uint8_t * ptr;
+    uint8_t bit_mask;
+    int32_t col;
+    int32_t pixels_to_go;
+    bool switch_col;
+} pte_rice_state_t;
+
+typedef struct {
+    const uint8_t * repeat_rows;
+    int32_t row;
+    pte_rice_state_t rice;
+    pte_rice_state_t previous_row;
+} pte_bitmap_decoder_t;
+
+static bool rice_read_bit(pte_rice_state_t * state)
+{
+    bool bit = (*state->ptr & state->bit_mask) != 0;
+    state->bit_mask >>= 1;
+    if(state->bit_mask == 0) {
+        state->bit_mask = 0x80;
+        state->ptr++;
+    }
+    return bit;
+}
+
+static int32_t rice_read_run(pte_rice_state_t * state)
+{
+    int32_t quotient = 0;
+    int32_t remainder = 0;
+    while(!rice_read_bit(state)) quotient++;
+    for(int32_t i = 0; i < 4; i++) {
+        remainder = (remainder << 1) | (rice_read_bit(state) ? 1 : 0);
+    }
+    return quotient * 16 + remainder;
+}
+
+static int32_t rice_read_pixel(pte_rice_state_t * state)
+{
+    while(state->pixels_to_go == 0) {
+        if(state->switch_col) state->col = !state->col;
+        state->pixels_to_go = rice_read_run(state);
+        state->switch_col = true;
+    }
+    state->pixels_to_go--;
+    return state->col;
+}
+
+static void bitmap_decoder_init(pte_bitmap_decoder_t * decoder, const pte_base_font * font,
+                                const pte_glyph * glyph)
+{
+    const uint8_t * data = font->m_data + glyph->ptr;
+    decoder->repeat_rows = data;
+    decoder->row = 0;
+    decoder->rice.ptr = data + ((glyph->height + 7) / 8);
+    decoder->rice.bit_mask = 0x80;
+    decoder->rice.col = 0;
+    decoder->rice.pixels_to_go = 0;
+    decoder->rice.switch_col = false;
+    decoder->previous_row = decoder->rice;
+}
+
+static bool bitmap_decoder_begin_row(pte_bitmap_decoder_t * decoder,
+                                     pte_rice_state_t * row_state)
+{
+    bool repeated = (decoder->repeat_rows[decoder->row >> 3]
+                     & (0x80 >> (decoder->row & 7))) != 0;
+    if(repeated) {
+        *row_state = decoder->previous_row;
+    }
+    else {
+        decoder->previous_row = decoder->rice;
+        *row_state = decoder->rice;
+    }
+    return repeated;
+}
+
+static void bitmap_decoder_end_row(pte_bitmap_decoder_t * decoder,
+                                   const pte_rice_state_t * row_state, bool repeated)
+{
+    if(!repeated) decoder->rice = *row_state;
+    decoder->row++;
+}
+
+static void blt_horz_cmprs_resize(pte_bitmap_decoder_t * decoder,
                                   int32_t src_width, int32_t dst_x, int32_t dst_y, int32_t ra, int32_t rb,
                                   int32_t sub_offset_x, int32_t lines, int32_t overspill, pte_render_ctx_t * ctx)
 {
@@ -269,23 +352,14 @@ static void blt_horz_cmprs_resize(const uint8_t ** ptr, bool * high_nibble, int3
     int32_t p = 0;
     int32_t count = lines;
     int32_t div = 0;
+    pte_rice_state_t row_state;
+    bool repeated;
     if(line_acc == NULL) return;
+    repeated = bitmap_decoder_begin_row(decoder, &row_state);
 
     while(count > 0) {
         if(x >= 0 && x < src_width) {
-            while(*pixels_to_go == 0) {
-                if(*switch_col) {
-                    *col = !*col;
-                    *switch_col = false;
-                }
-                int32_t run = *high_nibble ? (**ptr >> 4) : (**ptr & 0x0f);
-                if(!*high_nibble) ++(*ptr);
-                *high_nibble = !*high_nibble;
-                *pixels_to_go = run;
-                *switch_col = run < 15;
-            }
-            if(*col) ++line_acc[p];
-            --(*pixels_to_go);
+            if(rice_read_pixel(&row_state)) ++line_acc[p];
         }
         div += lines + overspill;
         ++x;
@@ -299,10 +373,12 @@ static void blt_horz_cmprs_resize(const uint8_t ** ptr, bool * high_nibble, int3
                 dst_x++;
             }
             if(x >= src_width) {
+                bitmap_decoder_end_row(decoder, &row_state, repeated);
                 --count;
                 p = 0;
                 x = x_start;
                 c = rb;
+                if(count > 0) repeated = bitmap_decoder_begin_row(decoder, &row_state);
             }
             else {
                 c += rb;
@@ -321,14 +397,11 @@ static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int3
     const int32_t ra = dsc->size;
     const int32_t rb = dsc->src->m_size;
     int32_t acc = rb;
-    bool high_nibble = true;
-    int32_t col = 0;
-    int32_t pixels_to_go = 0;
-    bool switch_col = false;
+    pte_bitmap_decoder_t decoder;
     int32_t cy = 0;
     int32_t last_cy = 0;
     bool finished = false;
-    const uint8_t * ptr = dsc->src->m_data + glyph->ptr;
+    bitmap_decoder_init(&decoder, dsc->src, glyph);
 
     x = (x * rb) / ra;
     y = (y * rb) / ra;
@@ -367,8 +440,8 @@ static void draw_glyph(const pte_font_dsc_t * dsc, const pte_glyph * glyph, int3
             }
 
             if(lines > 0) {
-                blt_horz_cmprs_resize(&ptr, &high_nibble, &col, &pixels_to_go, &switch_col,
-                                      glyph->width, offset_x, offset_y, ra, rb, sub_offset_x, lines,
+                blt_horz_cmprs_resize(&decoder, glyph->width, offset_x, offset_y,
+                                      ra, rb, sub_offset_x, lines,
                                       overspill, ctx);
             }
             offset_y++;

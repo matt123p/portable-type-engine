@@ -43,36 +43,61 @@ class FakeFont(dict):
 
 
 class FontSamplerTests(unittest.TestCase):
-    def test_continuation_rle_encoding(self):
-        encode = fontsampler.FontSampler.encode_pixels
+    @staticmethod
+    def decode_rice(encoded, pixel_count):
+        bit = 0
+        decoded = []
+        run_of_on = False
 
-        self.assertEqual(encode([]), [])
-        self.assertEqual(encode([False] * 3 + [True] * 2), [0x32])
-        self.assertEqual(encode([False] * 15 + [True]), [0xf0, 0x10])
-        self.assertEqual(encode([False] * 35), [0xff, 0x50])
+        def read_bit():
+            nonlocal bit
+            value = (encoded[bit >> 3] >> (7 - (bit & 7))) & 1
+            bit += 1
+            return value
 
-    def test_continuation_rle_round_trip(self):
+        while len(decoded) < pixel_count:
+            quotient = 0
+            while not read_bit():
+                quotient += 1
+            remainder = 0
+            for _ in range(4):
+                remainder = (remainder << 1) | read_bit()
+            decoded.extend([run_of_on] * (quotient * 16 + remainder))
+            run_of_on = not run_of_on
+        return decoded
+
+    @classmethod
+    def decode_bitmap(cls, encoded, width, height):
+        repeat_size = (height + 7) // 8
+        repeat_rows = encoded[:repeat_size]
+        literal_count = 0
+        for y in range(height):
+            if not (repeat_rows[y >> 3] & (0x80 >> (y & 7))):
+                literal_count += width
+        literals = cls.decode_rice(encoded[repeat_size:], literal_count)
+        pixels = []
+        literal = 0
+        for y in range(height):
+            if repeat_rows[y >> 3] & (0x80 >> (y & 7)):
+                pixels.extend(pixels[-width:])
+            else:
+                pixels.extend(literals[literal:literal + width])
+                literal += width
+        return pixels
+
+    def test_rice_encoding_round_trip(self):
         pixels = ([False] * 35 + [True] * 15 + [False, True] * 20
                   + [True] * 31)
-        encoded = fontsampler.FontSampler.encode_pixels(pixels)
-        decoded = []
-        byte = 0
-        high_nibble = True
-        run_of_on = False
-        switch_colour = False
+        encoded = fontsampler.FontSampler.encode_rice_pixels(pixels)
 
-        while len(decoded) < len(pixels):
-            if switch_colour:
-                run_of_on = not run_of_on
-            run = ((encoded[byte] >> 4) if high_nibble
-                   else (encoded[byte] & 0xf))
-            if not high_nibble:
-                byte += 1
-            high_nibble = not high_nibble
-            switch_colour = run < 15
-            decoded.extend([run_of_on] * run)
+        self.assertEqual(self.decode_rice(encoded, len(pixels)), pixels)
 
-        self.assertEqual(decoded, pixels)
+    def test_bitmap_encoding_repeats_identical_rows(self):
+        pixels = [True, False, True, False, False, True]
+        encoded = fontsampler.FontSampler.encode_bitmap(pixels, 2, 3)
+
+        self.assertEqual(encoded, [0x40, 0x84, 0x65, 0x10])
+        self.assertEqual(self.decode_bitmap(encoded, 2, 3), pixels)
 
     def sampler_with_glyphs(self):
         sampler = fontsampler.FontSampler([])

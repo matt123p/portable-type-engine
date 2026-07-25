@@ -47,12 +47,28 @@ static const pte_base_font large_source = {
 	2, 1, PTE_KERN_FORMAT_COMPACT
 };
 
+static const unsigned char bitmap_data[] = {0x40, 0x84, 0x65, 0x10};
+static const pte_glyph bitmap_glyphs[] = {
+	{'X', 2, 3, 0, 0, 2, 0},
+};
+static const pte_base_font bitmap_source = {
+	1, bitmap_data, 1, bitmap_glyphs,
+	NULL, NULL, NULL,
+	3, 3, PTE_KERN_FORMAT_LEGACY
+};
+
+static int blended_pixels;
+static int blended_x[3];
+static int blended_y[3];
+
 void hw_blendPixel(int x, int y, int alpha, int colour)
 {
-	(void)x;
-	(void)y;
-	(void)alpha;
 	(void)colour;
+	assert(alpha > 0);
+	assert(blended_pixels < 3);
+	blended_x[blended_pixels] = x;
+	blended_y[blended_pixels] = y;
+	++blended_pixels;
 }
 
 static void assert_measurement(const pte_base_font* source)
@@ -91,6 +107,14 @@ int main(void)
 	pte_measureText(&font, "\xc4\x81" "A", (size_t)-1, &width, &height);
 	assert(width == 5);
 	assert(height == 2);
+
+	font = pte_getFont(&bitmap_source, 1);
+	blended_pixels = 0;
+	pte_drawText(&font, 0, 3, 0, "X", (size_t)-1, 0);
+	assert(blended_pixels == 3);
+	assert(blended_x[0] == 0 && blended_y[0] == 4);
+	assert(blended_x[1] == 0 && blended_y[1] == 5);
+	assert(blended_x[2] == 1 && blended_y[2] == 6);
 
 	return 0;
 }

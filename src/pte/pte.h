@@ -79,7 +79,8 @@ typedef struct
 	// The size of the font
 	int						m_size;
 
-	// The actual font data
+	// The bitmap data. Each glyph begins with a repeat-row bitmap followed by
+	// a Golomb-Rice k=4 stream for its literal scanlines.
 	const unsigned char* m_data;
 
 	// The glyph data

@@ -185,17 +185,16 @@ class FontSampler:
             fout.write("{\n    return &f;\n}\n")
 
     @staticmethod
-    def encode_pixels(pixels):
-        tokens = []
+    def encode_rice_pixels(pixels):
+        bits = []
         run_of_on = False
         run_length = 0
 
         def output_run(length):
-            while length >= 15:
-                tokens.append(15)
-                length -= 15
-            # A zero token is required after an exact multiple of 15 to switch colour.
-            tokens.append(length)
+            bits.extend([0] * (length >> 4))
+            bits.append(1)
+            remainder = length & 0xf
+            bits.extend((remainder >> shift) & 1 for shift in range(3, -1, -1))
 
         for on in pixels:
             if on == run_of_on:
@@ -208,9 +207,34 @@ class FontSampler:
         if pixels:
             output_run(run_length)
 
-        return [((tokens[i] << 4)
-                 | (tokens[i + 1] if i + 1 < len(tokens) else 0))
-                for i in range(0, len(tokens), 2)]
+        encoded = [0] * ((len(bits) + 7) // 8)
+        for index, bit in enumerate(bits):
+            if bit:
+                encoded[index >> 3] |= 0x80 >> (index & 7)
+        return encoded
+
+    @classmethod
+    def encode_bitmap(cls, pixels, width, height):
+        if len(pixels) != width * height:
+            raise ValueError("bitmap pixel count does not match its dimensions")
+
+        repeat_rows = [False] * height
+        literal_pixels = []
+        previous = None
+        for y in range(height):
+            row = pixels[y * width:(y + 1) * width]
+            repeated = y > 0 and row == previous
+            repeat_rows[y] = repeated
+            if not repeated:
+                literal_pixels.extend(row)
+            previous = row
+
+        encoded = [0] * ((height + 7) // 8)
+        for y, repeated in enumerate(repeat_rows):
+            if repeated:
+                encoded[y >> 3] |= 0x80 >> (y & 7)
+        encoded.extend(cls.encode_rice_pixels(literal_pixels))
+        return encoded
 
     def val(self, c):
         return ord(c)
@@ -257,7 +281,7 @@ class FontSampler:
                 t = image.getpixel((x, y))
                 pixels.append(t[0] < 128)
 
-        self.m_data.extend(self.encode_pixels(pixels))
+        self.m_data.extend(self.encode_bitmap(pixels, width, height))
 
     def calcAllKerns(self, tt_font):
         # Map glyph names to the Unicode code points emitted in the glyph table.
