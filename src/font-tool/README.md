@@ -1,116 +1,103 @@
-# Portable Type Engine Font Tool User Guide
+# Font tool
 
-This tool converts font files (such as TTF files) into C arrays that can be used with the Portable Type Engine. It extracts character glyphs, kerning information, and other metrics from the font file and generates C code that you can include in your projects.
+`fontsampler.py` converts a TrueType or OpenType font into a C source file for
+Portable Type Engine (PTE). The output contains glyph metrics, compressed
+bitmaps, kerning tables, and a getter for the generated `pte_base_font`.
 
-## What Does It Do?
+## Generated format
 
-- **Generates Image Data:** Converts the glyphs into image data (packed into an array).
-- **Processes Kerning:** Extracts kerning information between pairs of characters, scaling it to the correct pixel values.
-- **Produces C Code:** Outputs a C file with arrays for glyphs, image data, and kerning data, along with a function to retrieve the font structure.
+Glyphs are ordered by Unicode code point for binary lookup. The scanline
+renderer allocates its accumulator for each glyph, so source glyphs are not
+limited to 128 pixels wide.
 
-Generated glyph and kerning tables are sorted for PTE's binary searches. Both
-legacy `kern` tables and GPOS pair positioning (including class-based kerning)
-are supported. The runtime allocates its scanline accumulator to fit each glyph,
-so source glyph widths are not limited to 128 pixels.
+### Bitmaps
 
-Kerning pairs use 16-bit glyph indices. First glyphs with identical kerning
-rows share one sorted row, reducing storage while retaining binary lookup for
-the second glyph. Adjustments that round to zero at the sampled size are omitted.
-When all second glyphs that actually occur in kerning pairs are within the
-first 256 glyph-table entries, and the font has at most 255 shared rows, 65535
-kerning entries, and eight-bit sampled adjustments, the generated table
-automatically uses PTE's compact fixed format. The full glyph table may be much
-larger: its first-glyph map stores eight-bit row IDs but is indexed by the full
-glyph index. Row boundaries and pair entries are packed into 16 bits. Tables
-whose actual kerning references exceed these limits retain the wide legacy
-format.
+Each glyph begins with one repeat-previous bit per scanline, padded to a byte
+boundary. A repeated row has no pixel payload. Literal rows form one continuous
+stream, allowing runs to cross scanline boundaries.
 
-Each glyph bitmap starts with one repeat-previous bit per source scanline,
-padded to a byte boundary. Repeated rows have no pixel payload; all other rows
-remain one continuous stream, so runs are not reset at scanline boundaries.
-The stream stores alternating background and foreground run lengths using a
-fixed Golomb-Rice code with `k=4`: a unary quotient followed by a four-bit
-remainder. Each glyph and its first run start on a byte boundary; the first run
-is background and may have length zero.
+Alternating background and foreground runs use
+[Golomb–Rice coding](https://en.wikipedia.org/wiki/Golomb_coding#Rice_coding)
+with `k=4`: a unary quotient followed by a four-bit remainder. The first run is
+background and may be empty.
+
+### Kerning
+
+The tool reads both legacy `kern` tables and GPOS pair positioning, including
+class-based kerning. It scales adjustments to the sampled size, removes values
+that round to zero, sorts pairs for binary lookup, and shares identical
+first-glyph rows.
+
+Compact kerning is selected when:
+
+- referenced second-glyph indices fit in eight bits;
+- there are no more than 255 shared rows;
+- there are no more than 65,535 entries; and
+- sampled adjustments fit in a signed byte.
+
+The glyph table itself may contain more than 256 glyphs. Fonts that exceed a
+compact limit use the wide 16-bit format.
 
 ## Installation
 
-### Prerequisites
-- **Python 3.x:** Ensure Python is installed. You can download it from [python.org](https://www.python.org/downloads/).
-- **Required Python Packages:**  
-  This tool depends on the following Python packages:
-  - [Pillow](https://pillow.readthedocs.io/)
-  - [fontTools](https://github.com/fonttools/fonttools)
-
-### Installation Steps
-
-1. **Install Python 3:**  
-   Follow the installation instructions on [python.org](https://www.python.org/downloads/).
-
-2. **Install Required Packages:**  
-
-Open a terminal or command prompt and run:
-```sh
-pip install Pillow fonttools
-```
-
-## How to Run the Tool
-
-1.  **Open a Terminal:**  
-    Open a command prompt or terminal in the folder that contains fontsampler.py.
-2.  **Run the Tool:**  
-    Use the following command format:
+Install Python 3 and the two converter dependencies:
 
 ```sh
-python fontsampler.py --font <font-file-path> --output <output-file> [options]
+python -m pip install Pillow fonttools
 ```
 
--   `--font <font-file-path>`: Required path to the input font file (e.g., `C:\path\to\yourfont.ttf`).
--   `--output <output-file>`: Required path to the output C file.
--   [--range <start-end,...>]: (Optional) Add Unicode ranges using decimal or `0x` values. The option can be repeated.
--   [--symbols <symbols>]: (Optional) Add individual Unicode symbols.
--   [--all]: (Optional) Include every Unicode code point mapped by the font.
--   [--axis <TAG=VALUE>]: (Optional) Set a variable-font axis such as
-    `wght=700`. This option may be repeated.
--   [--name <C_NAME>]: (Optional) Override the generated C symbol and getter
-    name so several styles from one font family can be linked together.
+## Usage
+
+```sh
+python fontsampler.py --font <font-file> --output <output.c> [options]
+```
+
+Options:
+
+- `--font`: input TTF or OTF file.
+- `--output`: generated C file.
+- `--range`: decimal or `0x` Unicode ranges; repeat the option as needed.
+- `--symbols`: individual Unicode characters to include.
+- `--all`: include every Unicode code point mapped by the font.
+- `--axis TAG=VALUE`: set a variable-font axis; repeat as needed.
+- `--name C_NAME`: set the generated C symbol and getter name.
+
+Without `--range`, `--symbols`, or `--all`, the default set is
+`U+0020–U+007E` and `U+00A0–U+00FF`. Using `--symbols` alone includes only
+those symbols. Overlapping selections are deduplicated.
 
 ### Examples
 
-**Basic Usage:**
+Basic conversion:
 
 ```sh
-python fontsampler.py --font C:\path\to\yourfont.ttf --output myfont.c
+python fontsampler.py --font MyFont.ttf --output my_font.c
 ```
 
-**Variable Font:**
+Selected ranges and symbols:
 
 ```sh
-python fontsampler.py --font Roboto-Variable.ttf --output roboto_bold.c --axis wght=700 --name Roboto_Bold
+python fontsampler.py --font MyFont.ttf --output my_font.c \
+  --range "0x20-0x7e,0xa0-0xff" --symbols "€£→✓"
 ```
 
-**Complete Icon Font:**
+Variable font:
 
 ```sh
-python fontsampler.py --font MyIcons.ttf --output my_icons.c --all --name My_Icons
+python fontsampler.py --font Roboto-Variable.ttf --output roboto_bold.c \
+  --axis wght=700 --name Roboto_Bold
 ```
 
-**Selecting Unicode Characters:**
-
-Ranges and individual symbols can be combined. Overlapping selections are
-deduplicated. Values may be decimal or `0x`-prefixed Unicode code points, and
-`--range` may be repeated:
+Complete icon font:
 
 ```sh
-python fontsampler.py --font C:\path\to\yourfont.ttf --output myfont.c --range "0x20-0x7e, 0xa0-0xff" --symbols "€£→✓"
+python fontsampler.py --font MyIcons.ttf --output my_icons.c \
+  --all --name My_Icons
 ```
 
-When neither option is supplied, the tool includes `U+0020-U+007E` and
-`U+00A0-U+00FF`. When `--symbols` is used alone, only those symbols are included.
+PTE text is UTF-8. Drawing and measurement functions take a byte count; pass
+`(size_t)-1` for a null-terminated string.
 
-All text passed to PTE is UTF-8. The `size` argument to drawing and measurement
-functions is a byte count; use `(size_t)-1` for null-terminated text.
-
-Generated files can also be passed directly to `lv_pte_create()` when using the
-[LVGL add-on](../../docs/lvgl.md); no second conversion format is needed.
-
+The generated source works with the
+[LVGL adapter](../../docs/lvgl.md) and the
+[ESPHome component](../../docs/esphome.md) without another conversion step.
