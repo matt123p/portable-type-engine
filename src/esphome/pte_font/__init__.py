@@ -334,10 +334,10 @@ async def to_code(config):
     global _ENGINE_FILES_ADDED
     if not _ENGINE_FILES_ADDED:
         # Get paths relative to project directory
-        # The external components are checked out to .esphome/external_components/{hash}/src/
-        # We need to find that src directory and access lvgl/ and pte/ from there
+        # The external component is checked out beneath a src directory. The
+        # LVGL adapter contains the complete renderer; the native pte.c backend
+        # is intentionally not compiled because it requires hw_blendPixel().
         try:
-            # Start from component dir and find the src directory
             current = _COMPONENT_DIR
             src_dir = None
             while current.parent != Path(current.anchor):
@@ -349,17 +349,12 @@ async def to_code(config):
             if src_dir is None:
                 raise cv.Invalid("Could not find src directory in component checkout")
 
-            # From src/ directory, access lvgl/ and pte/
             lv_pte_c = src_dir / "lvgl" / "lv_pte.c"
-            pte_c = src_dir / "pte" / "pte.c"
 
             if not lv_pte_c.exists():
                 raise cv.Invalid(f"lv_pte.c not found at {lv_pte_c}")
-            if not pte_c.exists():
-                raise cv.Invalid(f"pte.c not found at {pte_c}")
 
             CORE.add_job(add_includes, [str(lv_pte_c)], False)
-            CORE.add_job(add_includes, [str(pte_c)], False)
             _ENGINE_FILES_ADDED = True
         except Exception as e:
             raise cv.Invalid(f"Failed to add engine source files: {e}")
