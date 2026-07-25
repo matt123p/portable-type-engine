@@ -84,48 +84,95 @@ static const pte_glyph* findChar(int c, const pte_base_font* f)
 	return NULL;
 }
 
-static const pte_kern_entry* findKern(int first_glyph, int second_glyph, const pte_base_font* f)
+static int compactKernAmount(pte_compact_kern_entry entry)
 {
-	const pte_kern_row* row;
+	unsigned int amount = (unsigned int)(entry >> 8);
+	return amount < 0x80U ? (int)amount : (int)amount - 0x100;
+}
+
+static int findKern(int first_glyph, int second_glyph, const pte_base_font* f)
+{
 	uint32_t low;
 	uint32_t high;
-	uint16_t row_index;
 
 	if (first_glyph < 0 || second_glyph < 0
 		|| first_glyph >= f->m_number_glyphs || second_glyph >= f->m_number_glyphs
 		|| !f->m_glyph_kern_rows || !f->m_kern_rows || !f->m_kern_entries)
 	{
-		return NULL;
+		return 0;
 	}
 
-	row_index = f->m_glyph_kern_rows[first_glyph];
-	if (row_index == PTE_NO_KERN_ROW)
+	if (f->m_kern_format == PTE_KERN_FORMAT_COMPACT)
 	{
-		return NULL;
+		const uint8_t* glyph_rows = (const uint8_t*)f->m_glyph_kern_rows;
+		const uint16_t* row_offsets = (const uint16_t*)f->m_kern_rows;
+		const pte_compact_kern_entry* entries =
+			(const pte_compact_kern_entry*)f->m_kern_entries;
+		uint8_t row_index = glyph_rows[first_glyph];
+
+		if (row_index == PTE_NO_COMPACT_KERN_ROW || second_glyph > UINT8_MAX)
+		{
+			return 0;
+		}
+
+		low = row_offsets[row_index];
+		high = row_offsets[(uint16_t)row_index + 1U];
+		while (low < high)
+		{
+			uint32_t mid = low + (high - low) / 2;
+			pte_compact_kern_entry entry = entries[mid];
+			uint8_t entry_second = (uint8_t)entry;
+			if (entry_second == (uint8_t)second_glyph)
+			{
+				return compactKernAmount(entry);
+			}
+			if (entry_second < (uint8_t)second_glyph)
+			{
+				low = mid + 1;
+			}
+			else
+			{
+				high = mid;
+			}
+		}
+		return 0;
 	}
 
-	row = &f->m_kern_rows[row_index];
-	low = row->offset;
-	high = row->offset + row->count;
-	while (low < high)
 	{
-		uint32_t mid = low + (high - low) / 2;
-		const pte_kern_entry* entry = &f->m_kern_entries[mid];
-		if (entry->second_glyph == (uint16_t)second_glyph)
+		const uint16_t* glyph_rows = (const uint16_t*)f->m_glyph_kern_rows;
+		const pte_kern_row* rows = (const pte_kern_row*)f->m_kern_rows;
+		const pte_kern_entry* entries = (const pte_kern_entry*)f->m_kern_entries;
+		const pte_kern_row* row;
+		uint16_t row_index = glyph_rows[first_glyph];
+
+		if (row_index == PTE_NO_KERN_ROW)
 		{
-			return entry;
+			return 0;
 		}
-		if (entry->second_glyph < (uint16_t)second_glyph)
+
+		row = &rows[row_index];
+		low = row->offset;
+		high = row->offset + row->count;
+		while (low < high)
 		{
-			low = mid + 1;
-		}
-		else
-		{
-			high = mid;
+			uint32_t mid = low + (high - low) / 2;
+			const pte_kern_entry* entry = &entries[mid];
+			if (entry->second_glyph == (uint16_t)second_glyph)
+			{
+				return entry->amount;
+			}
+			if (entry->second_glyph < (uint16_t)second_glyph)
+			{
+				low = mid + 1;
+			}
+			else
+			{
+				high = mid;
+			}
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 // Bitblt a horizontal line from a compressed source
@@ -334,7 +381,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 		if (g)
 		{
 			// Bitblt this character across
-			const pte_kern_entry* k;
+			int kern;
 			int glyph_index = (int)(g - bf->m_gylphs);
 
 			int acc = 0;
@@ -355,12 +402,9 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 			int sub_offset_dx;
 			int sub_offset_dy;
 
-			k = findKern(last_glyph, glyph_index, bf);
-			if (k)
-			{
-				x += k->amount * pixel_xinc;
-				y += k->amount * pixel_yinc;
-			}
+			kern = findKern(last_glyph, glyph_index, bf);
+			x += kern * pixel_xinc;
+			y += kern * pixel_yinc;
 
 			switch (r)
 			{
@@ -502,17 +546,9 @@ void pte_measureText(pte_font* f, const char* text, size_t size, int* dx, int* d
 		i += bytes;
 		if (g)
 		{
-			const pte_kern_entry* k;
 			int glyph_index = (int)(g - bf->m_gylphs);
-			k = findKern(last_glyph, glyph_index, bf);
-			if (k)
-			{
-				*dx += g->xadvance + k->amount;
-			}
-			else
-			{
-				*dx += g->xadvance;
-			}
+			int kern = findKern(last_glyph, glyph_index, bf);
+			*dx += g->xadvance + kern;
 
 			last_glyph = glyph_index;
 		}

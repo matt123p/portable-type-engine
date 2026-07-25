@@ -1,3 +1,6 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,11 +12,23 @@ static const pte_glyph glyphs[] = {
     {'A', 2, 1, 0, 0, 3, 0},
     {'V', 2, 1, 0, 0, 3, 1},
 };
-static const uint16_t glyph_kern_rows[] = {0, PTE_NO_KERN_ROW};
-static const pte_kern_row kern_rows[] = {{0, 1}};
-static const pte_kern_entry kern_entries[] = {{1, -1}};
+static const uint8_t glyph_kern_rows[] = {0, PTE_NO_COMPACT_KERN_ROW};
+static const uint16_t kern_rows[] = {0, 2};
+static const pte_compact_kern_entry kern_entries[] = {
+    PTE_COMPACT_KERN_ENTRY(0, 3),
+    PTE_COMPACT_KERN_ENTRY(1, -1),
+};
 static const pte_base_font source = {
-    1, data, 2, glyphs, glyph_kern_rows, kern_rows, kern_entries, 2, 1
+    1, data, 2, glyphs, glyph_kern_rows, kern_rows, kern_entries, 2, 1,
+    PTE_KERN_FORMAT_COMPACT
+};
+static const uint16_t legacy_glyph_kern_rows[] = {0, PTE_NO_KERN_ROW};
+static const pte_kern_row legacy_kern_rows[] = {{0, 2}};
+static const pte_kern_entry legacy_kern_entries[] = {{0, 3}, {1, -1}};
+static const pte_base_font legacy_source = {
+    1, data, 2, glyphs,
+    legacy_glyph_kern_rows, legacy_kern_rows, legacy_kern_entries,
+    2, 1
 };
 
 int main(void)
@@ -27,6 +42,8 @@ int main(void)
     lv_font_glyph_dsc_t dsc;
     assert(lv_font_get_glyph_dsc(font, &dsc, 'A', 'V'));
     assert(dsc.adv_w == 4);
+    assert(lv_font_get_glyph_dsc(font, &dsc, 'A', 'A'));
+    assert(dsc.adv_w == 12);
     assert(dsc.format == LV_FONT_GLYPH_FORMAT_A8);
     assert(dsc.box_w > 0 && dsc.box_h > 0);
 
@@ -48,6 +65,14 @@ int main(void)
     lv_pte_set_size(font, 3);
     assert(font->line_height == 6);
     assert(font->base_line == 3);
+    lv_pte_destroy(font);
+
+    font = lv_pte_create(&legacy_source, 2);
+    assert(font != NULL);
+    assert(lv_font_get_glyph_dsc(font, &dsc, 'A', 'V'));
+    assert(dsc.adv_w == 4);
+    assert(lv_font_get_glyph_dsc(font, &dsc, 'A', 'A'));
+    assert(dsc.adv_w == 12);
     lv_pte_destroy(font);
 
     lv_font_t in_place;

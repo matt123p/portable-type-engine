@@ -16,6 +16,14 @@ so source glyph widths are not limited to 128 pixels.
 Kerning pairs use 16-bit glyph indices. First glyphs with identical kerning
 rows share one sorted row, reducing storage while retaining binary lookup for
 the second glyph. Adjustments that round to zero at the sampled size are omitted.
+When all second glyphs that actually occur in kerning pairs are within the
+first 256 glyph-table entries, and the font has at most 255 shared rows, 65535
+kerning entries, and eight-bit sampled adjustments, the generated table
+automatically uses PTE's compact fixed format. The full glyph table may be much
+larger: its first-glyph map stores eight-bit row IDs but is indexed by the full
+glyph index. Row boundaries and pair entries are packed into 16 bits. Tables
+whose actual kerning references exceed these limits retain the wide legacy
+format.
 
 Bitmap runs are stored as sequential four-bit tokens. Values from 0 through 14
 end a run and switch between background and foreground; 15 continues the same

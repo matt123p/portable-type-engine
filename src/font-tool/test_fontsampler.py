@@ -14,10 +14,17 @@ from types import SimpleNamespace as NS
 if importlib.util.find_spec("fontTools") is None:
     fonttools = types.ModuleType("fontTools")
     ttlib = types.ModuleType("fontTools.ttLib")
+    varlib = types.ModuleType("fontTools.varLib")
+    instancer = types.ModuleType("fontTools.varLib.instancer")
     ttlib.TTFont = object
+    instancer.instantiateVariableFont = object
     fonttools.ttLib = ttlib
+    fonttools.varLib = varlib
+    varlib.instancer = instancer
     sys.modules["fontTools"] = fonttools
     sys.modules["fontTools.ttLib"] = ttlib
+    sys.modules["fontTools.varLib"] = varlib
+    sys.modules["fontTools.varLib.instancer"] = instancer
 
 import fontsampler
 
@@ -89,6 +96,90 @@ class FontSamplerTests(unittest.TestCase):
         self.assertEqual(rows, [(0, 1)])
         self.assertEqual(entries, [(1, -10)])
 
+    def test_compact_kerning_is_generated_when_values_fit(self):
+        sampler = self.sampler_with_glyphs()
+        sampler.m_kerns = [
+            fontsampler.Kern(65, 66, -10),
+            fontsampler.Kern(97, 66, -10),
+        ]
+        sampler.calcAllKerns = lambda tt_font: None
+        sampled_font = NS(
+            size=1000,
+            getname=lambda: ("Test Font", "Regular"),
+            getmetrics=lambda: (800, 200),
+        )
+        tt_font = FakeFont({65: "A", 66: "B", 97: "a"},
+                           head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "font.c"
+            sampler.convertFont(sampled_font, tt_font, output)
+            generated = output.read_text()
+
+        self.assertIn("// Font kerning table: 9 bytes", generated)
+        self.assertIn(
+            "static const uint8_t Test_Font_glyph_kern_rows[3]", generated)
+        self.assertIn("0,255,0", generated)
+        self.assertIn(
+            "static const uint16_t Test_Font_kern_rows[2]", generated)
+        self.assertIn("0,1", generated)
+        self.assertIn("PTE_COMPACT_KERN_ENTRY(1,-10)", generated)
+        self.assertIn("PTE_KERN_FORMAT_COMPACT", generated)
+
+    def test_wide_kerning_falls_back_to_legacy_format(self):
+        sampler = self.sampler_with_glyphs()
+        sampler.m_kerns = [fontsampler.Kern(65, 66, -129)]
+        sampler.calcAllKerns = lambda tt_font: None
+        sampled_font = NS(
+            size=1000,
+            getname=lambda: ("Test Font", "Regular"),
+            getmetrics=lambda: (800, 200),
+        )
+        tt_font = FakeFont({65: "A", 66: "B", 97: "a"},
+                           head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "font.c"
+            sampler.convertFont(sampled_font, tt_font, output)
+            generated = output.read_text()
+
+        self.assertIn(
+            "static const uint16_t Test_Font_glyph_kern_rows[3]", generated)
+        self.assertIn("static const pte_kern_row Test_Font_kern_rows[1]",
+                      generated)
+        self.assertIn(" { 1,-129 }", generated)
+        self.assertIn("PTE_KERN_FORMAT_LEGACY", generated)
+        self.assertTrue(fontsampler.FontSampler.canCompactKern(
+            [0] * 257, [(0, 1)], [(1, -1)]))
+        self.assertFalse(fontsampler.FontSampler.canCompactKern(
+            [0] * 257, [(0, 1)], [(256, -1)]))
+
+    def test_large_font_with_low_second_glyph_indices_stays_compact(self):
+        sampler = fontsampler.FontSampler([])
+        for code in range(1, 258):
+            sampler.m_glyphs[code] = fontsampler.Glyph(
+                chr(code), code, 1, 1, 0, 0, 0, 1)
+        # The first glyph is beyond index 255, but the second glyph, 'A', is
+        # index 64 and therefore fits the compact pair entry.
+        sampler.m_kerns = [fontsampler.Kern(257, 65, -1)]
+        sampler.calcAllKerns = lambda tt_font: None
+        sampled_font = NS(
+            size=1000,
+            getname=lambda: ("Large Font", "Regular"),
+            getmetrics=lambda: (800, 200),
+        )
+        tt_font = FakeFont({}, head=NS(unitsPerEm=1000))
+
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "font.c"
+            sampler.convertFont(sampled_font, tt_font, output)
+            generated = output.read_text()
+
+        self.assertIn(
+            "static const uint8_t Large_Font_glyph_kern_rows[257]", generated)
+        self.assertIn("PTE_COMPACT_KERN_ENTRY(64,-1)", generated)
+        self.assertIn("PTE_KERN_FORMAT_COMPACT", generated)
+
     def test_zero_scaled_kerning_is_omitted(self):
         sampler = self.sampler_with_glyphs()
         sampler.m_kerns = [fontsampler.Kern(65, 66, 1)]
@@ -154,7 +245,8 @@ class FontSamplerTests(unittest.TestCase):
             sampler.convertFont(sampled_font, tt_font, output)
             generated = output.read_text()
 
-        self.assertIn("0,0,0,120, 100 };", generated)
+        self.assertIn(
+            "0,0,0,120, 100, PTE_KERN_FORMAT_LEGACY };", generated)
 
     def test_generation_command_is_embedded(self):
         sampler = self.sampler_with_glyphs()

@@ -65,6 +65,15 @@ typedef struct
 
 #define PTE_NO_KERN_ROW UINT16_MAX
 
+typedef uint16_t pte_compact_kern_entry;
+
+#define PTE_NO_COMPACT_KERN_ROW UINT8_MAX
+#define PTE_KERN_FORMAT_LEGACY 0
+#define PTE_KERN_FORMAT_COMPACT 1
+#define PTE_COMPACT_KERN_ENTRY(second_glyph, amount) \
+	((pte_compact_kern_entry)((uint16_t)(uint8_t)(second_glyph) \
+		| ((uint16_t)(uint8_t)(amount) << 8)))
+
 typedef struct
 {
 	// The size of the font
@@ -78,13 +87,21 @@ typedef struct
 	const pte_glyph* m_gylphs;
 
 	// The kerning data
-	const uint16_t* m_glyph_kern_rows;
-	const pte_kern_row* m_kern_rows;
-	const pte_kern_entry* m_kern_entries;
+	// Legacy format:
+	//   uint16_t glyph rows, pte_kern_row rows, pte_kern_entry entries.
+	// Compact format:
+	//   one uint8_t row ID per glyph, uint16_t row offsets, and packed
+	//   uint16_t entries whose second-glyph indices are eight bits.
+	const void* m_glyph_kern_rows;
+	const void* m_kern_rows;
+	const void* m_kern_entries;
 
 	// Placement
 	int                 m_line_height;
 	int                 m_baseline;
+
+	// PTE_KERN_FORMAT_*. Omitted trailing initializers select the legacy format.
+	uint8_t             m_kern_format;
 } pte_base_font;
 
 typedef struct _pte_font
