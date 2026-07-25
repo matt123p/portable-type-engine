@@ -653,17 +653,17 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
-          auto now = std::time(nullptr);
-          auto *tm = std::localtime(&now);
-          char time_str[16];
-          std::strftime(time_str, sizeof(time_str), "%H:%M", tm);
+          auto now = id(sntp_time).now();
+          if (!now.is_valid()) {
+            return;
+          }
 
-          char date_str[48];
-          std::strftime(date_str, sizeof(date_str), "%A %d %B", tm);
+          auto time_str = now.strftime("%H:%M");
+          auto date_str = now.strftime("%A %d %B");
 
           if (lvgl_home_clock != nullptr) {
-            lv_label_set_text(lvgl_home_clock, time_str);
+            lv_label_set_text(lvgl_home_clock, time_str.c_str());
           }
           if (lvgl_home_date != nullptr) {
-            lv_label_set_text(lvgl_home_date, date_str);
+            lv_label_set_text(lvgl_home_date, date_str.c_str());
           }
