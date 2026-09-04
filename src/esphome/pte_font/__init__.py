@@ -350,30 +350,23 @@ async def to_code(config):
                 raise cv.Invalid("Could not find src directory in component checkout")
 
             lv_pte_c = src_dir / "lvgl" / "lv_pte.c"
+            lv_pte_h = src_dir / "lvgl" / "lv_pte.h"
+            pte_h = src_dir / "pte" / "pte.h"
 
-            if not lv_pte_c.exists():
-                raise cv.Invalid(f"lv_pte.c not found at {lv_pte_c}")
+            engine_files = [lv_pte_c, lv_pte_h, pte_h]
+            missing_files = [path for path in engine_files if not path.exists()]
+            if missing_files:
+                missing = ", ".join(str(path) for path in missing_files)
+                raise cv.Invalid(f"PTE engine files not found: {missing}")
 
-            CORE.add_job(add_includes, [str(lv_pte_c)], False)
+            # add_includes copies files into ESPHome's generated src directory,
+            # which is already on the native ESP-IDF include path. Do not rely
+            # on add_build_flag here: native builds do not consistently carry
+            # component-added -I flags into the generated CMake target.
+            CORE.add_job(add_includes, [str(path) for path in engine_files], False)
             _ENGINE_FILES_ADDED = True
         except Exception as e:
             raise cv.Invalid(f"Failed to add engine source files: {e}")
-
-    cg.add_define("USE_FONT")
-    # Add include path for the pte_font component directory
-    cg.add_build_flag(f'-I"{_COMPONENT_DIR}"')
-    # Add include path for the PTE engine (src/pte)
-    pte_include = (_COMPONENT_DIR.parent.parent / "pte").as_posix()
-    cg.add_build_flag(f'-I"{pte_include}"')
-    # Add include path for LVGL PTE adapter (src/lvgl)
-    lvgl_include = (_COMPONENT_DIR.parent.parent / "lvgl").as_posix()
-    cg.add_build_flag(f'-I"{lvgl_include}"')
-    # USE_FONT makes LVGL's compatibility overloads include font/font.h even
-    # when no ESPHome bitmap font instance is configured. In that case provide
-    # only the declaration needed by those inline overloads.
-    if "font" not in CORE.config:
-        compat_include = (_COMPONENT_DIR / "compat").as_posix()
-        cg.add_build_flag(f'-I"{compat_include}"')
 
     if CONF_FILE in config:
         source = config[CONF_SOURCE]
