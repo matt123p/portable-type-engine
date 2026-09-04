@@ -100,7 +100,7 @@ external_components:
   - source:
       type: git
       url: https://github.com/matt123p/portable-type-engine.git
-      ref: v2.1.0
+      ref: v2.1.1
       path: src/esphome
     components: [pte_font]
 
@@ -153,7 +153,7 @@ lvgl:
 Copy both files from `examples/esphome` into an ESPHome configuration, provide
 the Material Design Icons TTF at the configured path, and adjust the board,
 pin, Wi-Fi, and display settings for your hardware. The example pins PTE to
-`v2.1.0`; for development you can change `ref` to `main`, or use a newer
+`v2.1.1`; for development you can change `ref` to `main`, or use a newer
 release tag when one is available.
 
 ## Requirements
