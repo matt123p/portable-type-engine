@@ -2,11 +2,6 @@
 
 Release v2.2.0 - 7 September 2026
 
-Please visit the main project's home page here: 
-    [GitHub](https://github.com/matt123p/portable-type-engine)
-
-See [CHANGELOG.md](CHANGELOG.md) for release history.
-
 Please the LICENSE file for details of licensing.
 
 
@@ -39,6 +34,10 @@ guide](docs/esphome.md), and the [examples](examples/README.md).
 - **Extremely low RAM footprint:** font data remains in compact, read-only
   storage, with typical engine working memory around 0.5 KiB for the bundled
   Roboto font. See [RAM usage](#ram-usage) for the full breakdown and comparison.
+
+A detailed overview of how the font engine works is here [Architecture document](docs/architecture.md).
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ### ESPHome
 
@@ -203,6 +202,7 @@ y += f.m_line_height;
 
 ## Documentation
 
+- [Architecture document](docs/architecture.md)
 - [C API reference](src/pte/README.md)
 - [Font conversion tool guide](src/font-tool/README.md)
 - [LVGL add-on guide](docs/lvgl.md)

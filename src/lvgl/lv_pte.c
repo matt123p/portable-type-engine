@@ -256,8 +256,6 @@ static void blend_pixel(pte_render_ctx_t * ctx, int32_t x, int32_t y, int32_t al
     *pixel = LV_MIN(alpha, 255);
 }
 
-#define PTE_RESAMPLE_ALLOC lv_malloc
-#define PTE_RESAMPLE_FREE lv_free
 #include "pte_resample.h"
 
 static void blt_horz_cmprs_resize(pte_bitmap_decoder * decoder, pte_resample_buffer * buffer,
