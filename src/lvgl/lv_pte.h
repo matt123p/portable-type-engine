@@ -18,6 +18,11 @@ extern "C" {
 LV_ATTRIBUTE_EXTERN_DATA extern const lv_font_class_t lv_pte_font_class;
 #endif
 
+#if !defined(PTE_RESAMPLE_ALLOC)
+#define PTE_RESAMPLE_ALLOC lv_malloc
+#define PTE_RESAMPLE_FREE lv_free
+#endif
+
 /** Create an LVGL font at font_size pixels from generated PTE font data. */
 lv_font_t * lv_pte_create(const pte_base_font * src, int32_t font_size);
 
