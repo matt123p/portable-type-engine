@@ -175,190 +175,31 @@ static int findKern(int first_glyph, int second_glyph, const pte_base_font* f)
 	return 0;
 }
 
-typedef struct
-{
-	const unsigned char* ptr;
-	unsigned char bit_mask;
-	int col;
-	int pixels_to_go;
-	int switch_col;
-} pte_rice_state;
+#define PTE_RESAMPLE_ALLOC malloc
+#define PTE_RESAMPLE_FREE free
+#include "pte_resample.h"
 
-typedef struct
-{
-	const unsigned char* repeat_rows;
-	int row;
-	pte_rice_state rice;
-	pte_rice_state previous_row;
-} pte_bitmap_decoder;
-
-static int riceReadBit(pte_rice_state* state)
-{
-	int bit = (*state->ptr & state->bit_mask) != 0;
-	state->bit_mask >>= 1;
-	if (state->bit_mask == 0)
-	{
-		state->bit_mask = 0x80;
-		++state->ptr;
-	}
-	return bit;
-}
-
-static int riceReadRun(pte_rice_state* state)
-{
-	int quotient = 0;
-	int remainder = 0;
-	int i;
-	while (!riceReadBit(state))
-	{
-		++quotient;
-	}
-	for (i = 0; i < 4; ++i)
-	{
-		remainder = (remainder << 1) | riceReadBit(state);
-	}
-	return quotient * 16 + remainder;
-}
-
-static int riceReadPixel(pte_rice_state* state)
-{
-	while (state->pixels_to_go == 0)
-	{
-		if (state->switch_col)
-		{
-			state->col = !state->col;
-		}
-		state->pixels_to_go = riceReadRun(state);
-		state->switch_col = 1;
-	}
-	--state->pixels_to_go;
-	return state->col;
-}
-
-static void bitmapDecoderInit(pte_bitmap_decoder* decoder, const pte_base_font* font,
-	const pte_glyph* glyph)
-{
-	const unsigned char* data = font->m_data + glyph->ptr;
-	decoder->row = 0;
-	decoder->repeat_rows = data;
-
-	decoder->rice.ptr = data + ((glyph->height + 7) / 8);
-	decoder->rice.bit_mask = 0x80;
-	decoder->rice.col = 0;
-	decoder->rice.pixels_to_go = 0;
-	decoder->rice.switch_col = 0;
-	decoder->previous_row = decoder->rice;
-}
-
-static int bitmapDecoderBeginRow(pte_bitmap_decoder* decoder, pte_rice_state* row_state)
-{
-	int repeated = (decoder->repeat_rows[decoder->row >> 3]
-		& (0x80 >> (decoder->row & 7))) != 0;
-	if (repeated)
-	{
-		*row_state = decoder->previous_row;
-	}
-	else
-	{
-		decoder->previous_row = decoder->rice;
-		*row_state = decoder->rice;
-	}
-	return repeated;
-}
-
-static void bitmapDecoderEndRow(pte_bitmap_decoder* decoder,
-	const pte_rice_state* row_state, int repeated)
-{
-	if (!repeated)
-	{
-		decoder->rice = *row_state;
-	}
-	++decoder->row;
-}
-
-// Bitblt a horizontal line from a compressed source
-static void blt_horz_cmprs_resize(pte_bitmap_decoder* decoder, int src_width,
-	int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
+// Bitblt one Y sampling group, retaining the original X/Y padding and alpha.
+static void blt_horz_cmprs_resize(pte_bitmap_decoder* decoder, pte_resample_buffer* buffer,
+	int src_width, int dst_x, int dst_y, int pixel_xinc, int pixel_yinc,
 	int ra, int rb, int sub_offset_x, int lines, int overspill, int plot_col)
 {
-	int x_start = -((rb * sub_offset_x) / ra) / rb;
-	size_t line_acc_size = (size_t)src_width + (size_t)(-x_start) + 1;
-	unsigned int* line_acc = (unsigned int*)calloc(line_acc_size, sizeof(*line_acc));
-	int x = x_start;
-	int c = rb;
-	int p = 0;
-	int count = lines;
-	int div = 0;
-	pte_rice_state row_state;
-	int repeated;
-
-	if (!line_acc)
+	if (!decoder->buckets && !pteResamplePrepare(decoder, buffer, src_width, ra, rb, sub_offset_x))
 	{
 		return;
 	}
-	repeated = bitmapDecoderBeginRow(decoder, &row_state);
-
-	// Accumulate a horizontal line of data
-	while (count > 0)
+	pteResampleRows(decoder, lines);
+	for (int p = 0; p < decoder->count; ++p)
 	{
-		if (x >= 0 && x < src_width)
+		const pte_resample_bucket* bucket = &decoder->buckets[p];
+		int div = bucket->span * (lines + overspill);
+		if (bucket->total > 0)
 		{
-			int pixel = riceReadPixel(&row_state);
-			if (pixel)
-			{
-				++line_acc[p];
-			}
+			hw_blendPixel(dst_x, dst_y, (bucket->total << 8) / div, plot_col);
 		}
-		div += (lines + overspill);
-
-		++x;
-
-		// Move on the divider
-		c -= ra;
-
-		// Do we output a pixel, either because of the divider (c)
-		// or because this is the last row of pixels (count == 0)?
-		if (c <= 0 || count == 0)
-		{
-			// Are we on the the last line we are looking at?
-			if (count <= 1)
-			{
-				// Yes, so output a pixel
-				if (line_acc[p] > 0)
-				{
-					hw_blendPixel(dst_x, dst_y, (line_acc[p] << 8) / div, plot_col);
-				}
-
-				dst_x += pixel_xinc;
-				dst_y += pixel_yinc;
-			}
-
-			if (x >= src_width)
-			{
-				// Move to the next line
-				bitmapDecoderEndRow(decoder, &row_state, repeated);
-				--count;
-
-				// Reset for the next line
-				p = 0;
-				x = x_start;
-				c = rb;
-				if (count > 0)
-				{
-					repeated = bitmapDecoderBeginRow(decoder, &row_state);
-				}
-			}
-			else
-			{
-				// Count up for the next pixel
-				c += rb;
-				++p;
-			}
-			div = 0;
-		}
+		dst_x += pixel_xinc;
+		dst_y += pixel_yinc;
 	}
-
-	free(line_acc);
 }
 
 // Decode one UTF-8 code point. Invalid sequences fall back to their first byte.
@@ -421,6 +262,7 @@ static int nextChar(const char* text, size_t available, int* bytes)
 // Draw text on the canvas
 int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size, int c)
 {
+	pte_resample_buffer buffer = {NULL, 0};
 	int last_glyph = -1;
 	size_t i;
 	const pte_base_font* bf = f->m_font;
@@ -574,7 +416,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 
 					if (lines > 0)
 					{
-						blt_horz_cmprs_resize(&decoder, g->width,
+						blt_horz_cmprs_resize(&decoder, &buffer, g->width,
 							offset_x, offset_y, pixel_xinc, pixel_yinc,
 							f->m_ra, f->m_rb, sub_offset_dx, lines, overspill, c);
 					}
@@ -608,6 +450,7 @@ int pte_drawText(pte_font* f, int x, int y, int r, const char* text, size_t size
 		}
 	}
 
+	free(buffer.buckets);
 	return (x * f->m_ra) / f->m_rb;
 }
 

@@ -4,6 +4,10 @@ Include `pte.h` in application code and compile `pte.c` with the generated font
 source. All text arguments are UTF-8. A `size` of `(size_t)-1` reads through the
 null terminator; any other value is the maximum number of input bytes to read.
 
+Keep the internal `pte_resample.h` alongside `pte.c` and `pte.h` when copying the
+engine into another project. Both the native engine and LVGL adapter use this
+shared run-based X/Y resampler; ESPHome copies it automatically.
+
 Applications must provide this hardware callback:
 
 ```c

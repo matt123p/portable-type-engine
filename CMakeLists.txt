@@ -9,6 +9,7 @@ target_include_directories(pte PUBLIC
 target_compile_features(pte PUBLIC c_std_99)
 
 option(PTE_BUILD_TESTS "Build the native PTE tests" OFF)
+option(PTE_BUILD_RENDER_TESTS "Build pixel-exact golden-image rendering tests" ${PTE_BUILD_TESTS})
 if(PTE_BUILD_TESTS)
     enable_testing()
     add_executable(test_pte
@@ -21,6 +22,27 @@ if(PTE_BUILD_TESTS)
     target_include_directories(test_pte PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/pte)
     target_link_libraries(test_pte PRIVATE pte)
     add_test(NAME pte COMMAND test_pte)
+endif()
+
+if(PTE_BUILD_RENDER_TESTS)
+    enable_testing()
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    function(pte_render_test target backend)
+        add_executable(${target} tests/render/render_golden.c
+            examples/fonts/roboto_regular.c examples/fonts/roboto_bold.c
+            examples/fonts/roboto_italic.c examples/fonts/roboto_bold_italic.c)
+        target_include_directories(${target} PRIVATE src/pte src/lvgl examples/fonts)
+        target_compile_features(${target} PRIVATE c_std_99)
+        if(${backend} STREQUAL "lvgl")
+            target_compile_definitions(${target} PRIVATE PTE_GOLDEN_LVGL=1)
+            target_link_libraries(${target} PRIVATE lvgl)
+        endif()
+    endfunction()
+    pte_render_test(test_render_pte native)
+    add_test(NAME render_pte COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/render/verify_rendering.py
+        $<TARGET_FILE:test_render_pte>
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/render/golden/pte)
 endif()
 
 option(PTE_BUILD_WINDOWS_TEST "Build the BMP-producing Windows example" OFF)
@@ -47,6 +69,7 @@ if(PTE_BUILD_LVGL_TESTS)
     add_library(pte_lvgl src/lvgl/lv_pte.c)
     target_include_directories(pte_lvgl PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/pte
         ${CMAKE_CURRENT_SOURCE_DIR}/src/lvgl
     )
     target_link_libraries(pte_lvgl PUBLIC lvgl)
@@ -55,4 +78,11 @@ if(PTE_BUILD_LVGL_TESTS)
     add_executable(test_lv_pte tests/lvgl/test_lv_pte.c)
     target_link_libraries(test_lv_pte PRIVATE pte_lvgl)
     add_test(NAME lv_pte COMMAND test_lv_pte)
+    if(PTE_BUILD_RENDER_TESTS)
+        pte_render_test(test_render_lvgl lvgl)
+        add_test(NAME render_lvgl COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/render/verify_rendering.py
+            $<TARGET_FILE:test_render_lvgl>
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/render/golden/lvgl)
+    endif()
 endif()

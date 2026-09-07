@@ -352,8 +352,9 @@ async def to_code(config):
             lv_pte_c = src_dir / "lvgl" / "lv_pte.c"
             lv_pte_h = src_dir / "lvgl" / "lv_pte.h"
             pte_h = src_dir / "pte" / "pte.h"
+            pte_resample_h = src_dir / "pte" / "pte_resample.h"
 
-            engine_files = [lv_pte_c, lv_pte_h, pte_h]
+            engine_files = [lv_pte_c, lv_pte_h, pte_h, pte_resample_h]
             missing_files = [path for path in engine_files if not path.exists()]
             if missing_files:
                 missing = ", ".join(str(path) for path in missing_files)
